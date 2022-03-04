@@ -16,7 +16,7 @@
 
 // The ordering table is faster but can produce glitches if the table is too small or there's
 // intersecting geometry in the scene.
-#define ENABLE_ORDERING_TABLE 1
+#define ENABLE_ORDERING_TABLE 0
 
 #include <stddef.h>
 
@@ -26,5 +26,8 @@ extern void* (*m3d_realloc)(void* ptr, size_t size);
 #define m3d_free(ptr) m3d_realloc((ptr), 0)
 
 void mini3d_setRealloc(void* (*realloc)(void* ptr, size_t size));
+
+#include <pd_api.h>
+PlaydateAPI* pd;
 
 #endif /* mini3d_h */

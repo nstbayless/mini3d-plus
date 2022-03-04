@@ -7,7 +7,7 @@ n = scene:getRootNode()
 n2 = n:addChildNode()
 terrain = lib3d.shape.new()
 
-local TSIZE = 8
+local TSIZE = 25
 
 terrain:addFace(
     lib3d.point.new(-TSIZE,-TSIZE,0),

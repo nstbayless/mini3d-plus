@@ -14,6 +14,8 @@
 #include "shape.h"
 #include "render.h"
 
+#include <pd_api.h>
+
 #define WIDTH 400
 #define HEIGHT 240
 
@@ -217,7 +219,9 @@ Scene3D_updateShapeInstance(Scene3D* scene, ShapeInstance* shape, Matrix3D xform
 	// transform points
 	
 	for ( i = 0; i < shape->nPoints; ++i )
+	{
 		shape->points[i] = Matrix3D_apply(xform, Matrix3D_apply(shape->transform, proto->points[i]));
+	}
 
 	shape->center = Matrix3D_apply(xform, Matrix3D_apply(shape->transform, proto->center));
 	shape->colorBias = proto->colorBias + colorBias;
@@ -262,18 +266,20 @@ Scene3D_updateShapeInstance(Scene3D* scene, ShapeInstance* shape, Matrix3D xform
 	{
 		Point3D* p = &shape->points[i];
 		
-		if ( p->z > 0 )
+		if ( scene->hasPerspective )
 		{
-			if ( scene->hasPerspective )
+			float mult = 1.0 / p->z;
+			if (p->z < 1)
 			{
-				p->x = scene->scale * (p->x / p->z + 1.6666666 * scene->centerx);
-				p->y = scene->scale * (p->y / p->z + scene->centery);
+				mult = exp(-p->z + 1);
 			}
-			else
-			{
-				p->x = scene->scale * (p->x + 1.6666666 * scene->centerx);
-				p->y = scene->scale * (p->y + scene->centery);
-			}
+			p->x = scene->scale * (p->x * mult + 1.6666666 * scene->centerx);
+			p->y = scene->scale * (p->y * mult + scene->centery);
+		}
+		else
+		{
+			p->x = scene->scale * (p->x + 1.6666666 * scene->centerx);
+			p->y = scene->scale * (p->y + scene->centery);
 		}
 		
 #if ENABLE_Z_BUFFER
@@ -548,11 +554,6 @@ static Pattern patterns[] =
 static inline void
 drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride, FaceInstance* face)
 {
-	// If any vertex is behind the camera, skip it
-	
-	if ( face->p1->z <= 0 || face->p2->z <= 0 || face->p3->z <= 0 )
-		return;
-	
 	float x1 = face->p1->x;
 	float y1 = face->p1->y;
 	float x2 = face->p2->x;

@@ -12,7 +12,7 @@
 #include "shape.h"
 #include "scene.h"
 
-static PlaydateAPI* pd = NULL;
+PlaydateAPI* pd = NULL;
 
 static const lua_reg lib3DScene[];
 static const lua_reg lib3DNode[];
