@@ -1,0 +1,5 @@
+.vscode
+*.pdx
+build
+*.bin
+*.so
