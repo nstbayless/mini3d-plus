@@ -95,6 +95,14 @@ static int scene_draw(lua_State* L)
 	return 0;
 }
 
+static int draw_zbuff(lua_State* L)
+{
+	render_zbuff(pd->graphics->getFrame(), LCD_ROWSIZE);
+	pd->graphics->markUpdatedRows(0, LCD_ROWS-1); // XXX
+	
+	return 0;
+}
+
 static int scene_drawNode(lua_State* L)
 {
 	Scene3D* scene = getScene(1);
@@ -185,6 +193,7 @@ static const lua_reg lib3DScene[] =
 	{ "__gc",			scene_gc },
 	{ "new",			scene_new },
 	{ "draw",			scene_draw },
+	{ "drawZBuff",		draw_zbuff },
 	{ "drawNode",		scene_drawNode },
 	{ "getRootNode",	scene_getRoot },
 	{ "setLight",		scene_setLight },

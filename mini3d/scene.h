@@ -131,8 +131,4 @@ void Scene3D_draw(Scene3D* scene, uint8_t* buffer, int rowstride);
 void Scene3D_drawNode(Scene3D* scene, Scene3DNode* node, uint8_t* bitmap, int rowstride);
 void Scene3D_setCenter(Scene3D* scene, float x, float y);
 
-#if ENABLE_Z_BUFFER
-void Scene3D_getZMask(Scene3D* scene, uint8_t* zmask, int rowstride);
-#endif
-
 #endif /* scene_h */

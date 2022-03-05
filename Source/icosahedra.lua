@@ -122,6 +122,7 @@ function playdate.update()
 	
 	gfx.clear(gfx.kColorBlack)
 	scene:draw()
+	scene:drawZBuff()
 end
 
 function playdate.cranked()

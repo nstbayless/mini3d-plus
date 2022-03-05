@@ -266,20 +266,18 @@ Scene3D_updateShapeInstance(Scene3D* scene, ShapeInstance* shape, Matrix3D xform
 	{
 		Point3D* p = &shape->points[i];
 		
-		if ( scene->hasPerspective )
+		if ( p->z > 0 )
 		{
-			float mult = 1.0 / p->z;
-			if (p->z < 1)
+			if ( scene->hasPerspective )
 			{
-				mult = exp(-p->z + 1);
+				p->x = scene->scale * (p->x / p->z + 1.6666666 * scene->centerx);
+				p->y = scene->scale * (p->y / p->z + scene->centery);
 			}
-			p->x = scene->scale * (p->x * mult + 1.6666666 * scene->centerx);
-			p->y = scene->scale * (p->y * mult + scene->centery);
-		}
-		else
-		{
-			p->x = scene->scale * (p->x + 1.6666666 * scene->centerx);
-			p->y = scene->scale * (p->y + scene->centery);
+			else
+			{
+				p->x = scene->scale * (p->x + 1.6666666 * scene->centerx);
+				p->y = scene->scale * (p->y + scene->centery);
+			}
 		}
 		
 #if ENABLE_Z_BUFFER
@@ -554,6 +552,12 @@ static Pattern patterns[] =
 static inline void
 drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride, FaceInstance* face)
 {
+	
+	// If any vertex is behind the camera, skip the whole face
+	if ( face->p1->z <= 0 || face->p2->z <= 0 || face->p3->z <= 0
+		|| (face->p4 && face->p4->z <= 0))
+			return;
+	
 	float x1 = face->p1->x;
 	float y1 = face->p1->y;
 	float x2 = face->p2->x;
@@ -787,7 +791,7 @@ Scene3D_draw(Scene3D* scene, uint8_t* bitmap, int rowstride)
 	Scene3D_updateNode(scene, &scene->root, scene->camera, 0, kRenderFilled, 0);
 	
 #if ENABLE_Z_BUFFER
-	resetZBuffer(scene->zmin);
+	resetZBuffer(4);
 #endif
 	
 	Scene3D_drawNode(scene, &scene->root, bitmap, rowstride);

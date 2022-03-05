@@ -7,13 +7,30 @@ n = scene:getRootNode()
 n2 = n:addChildNode()
 terrain = lib3d.shape.new()
 
-local TSIZE = 25
-
+local TSIZE = 5
+--[[
 terrain:addFace(
-    lib3d.point.new(-TSIZE,-TSIZE,0),
-	lib3d.point.new(TSIZE,-TSIZE,0),
-	lib3d.point.new(TSIZE,TSIZE,0),
-	lib3d.point.new(-TSIZE,TSIZE,0), 0.5)
+    lib3d.point.new(0,0,0),
+    lib3d.point.new(0,TSIZE,0),
+    lib3d.point.new(TSIZE,TSIZE,0),
+    lib3d.point.new(TSIZE,0,0),
+    0.5
+)]]
+
+for i = -7,7 do
+    for j = -7,7 do
+        local function z_of(i, j)
+            return -(i*i + j*j) / 20
+        end
+        terrain:addFace(
+            lib3d.point.new(TSIZE*i,TSIZE*j,z_of(i, j)),
+            lib3d.point.new(TSIZE*(i+1),TSIZE*j,z_of(i+1, j)),
+            lib3d.point.new(TSIZE*(i+1),TSIZE*(j+1),z_of(i+1, j+1)),
+            lib3d.point.new(TSIZE*i,TSIZE*(j+1),z_of(i, j+1)),
+            0.5
+        )
+    end
+end
 
 n2:addShape(terrain)
     
@@ -23,7 +40,7 @@ kartshape = lib3d.shape.new()
 kartshape:addFace(lib3d.point.new(-KSIZE/2,0,0),
     lib3d.point.new(KSIZE/2,0,0),
     lib3d.point.new(KSIZE/2,0,KSIZE),
-    lib3d.point.new(-KSIZE/2,0,KSIZE), -0.5)
+    lib3d.point.new(-KSIZE/2,0,KSIZE), -0.1)
     
 kartNode = n:addChildNode()
 kartNode:addShape(kartshape)
@@ -85,8 +102,9 @@ function playdate.update()
     )
     
     kart:setShoulderCamera(scene)
-    scene:setLight(0.1, 0.2, 0.2)
+    scene:setLight(0.1, 0.5, 2)
 	
 	gfx.clear(gfx.kColorBlack)
 	scene:draw()
+    --scene:drawZBuff()
 end

@@ -548,4 +548,24 @@ LCDRowRange fillQuad_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* 
 	fillTriangle_zbuf(bitmap, rowstride, p1, p2, p3, pattern);
 	return fillTriangle_zbuf(bitmap, rowstride, p1, p3, p4, pattern);
 }
+
+#include <stdio.h>
+#include <stdlib.h>
+
+void render_zbuff(uint8_t* out, int rowstride)
+{
+	for (uint16_t x = 0; x < LCD_COLUMNS; ++x)
+	{
+		for (uint16_t y = 0; y < LCD_ROWS; ++y)
+		{
+			uint16_t pixi = (y * rowstride) + (x/8);
+			uint8_t mask = 0x80 >> (x % 8);
+			out[pixi] &= ~mask;
+			if ((rand() & 0xffff) < zbuf[y * LCD_COLUMNS + x])
+			{
+				out[pixi] |= mask;
+			}
+		}
+	}
+}
 #endif
