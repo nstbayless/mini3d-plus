@@ -5,3 +5,4 @@ function playdate.update() end
 --import "knot-ordered"
 --import "icosahedra"
 import "kart"
+--import "collision-test"

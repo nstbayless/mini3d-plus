@@ -72,6 +72,7 @@ static inline float Vector3DDot(Vector3D a, Vector3D b)
 	return a.dx * b.dx + a.dy * b.dy + a.dz * b.dz;
 }
 
+Vector3D Vector3D_normalize(Vector3D v);
 Vector3D normal(Point3D* p1, Point3D* p2, Point3D* p3);
 
 static inline float Vector3D_lengthSquared(Vector3D* v)
@@ -87,6 +88,19 @@ static inline float Vector3D_length(Vector3D* v)
 static inline Point3D Point3D_addVector(Point3D a, Vector3D v)
 {
 	return Point3DMake(a.x + v.dx, a.y + v.dy, a.z + v.dz);
+}
+
+static inline Vector3D Point3D_difference(Point3D* a, Point3D* b)
+{
+	return (Vector3D){ .dx = b->x - a->x, .dy = b->y - a->y, .dz = b->z - a->z };
+}
+
+static inline int Point3D_equal(Point3D* a, Point3D* b)
+{
+	if (a->x != b->x) return 0;
+	if (a->y != b->y) return 0;
+	if (a->z != b->z) return 0;
+	return 1;
 }
 
 // XXX - which side are we multiplying on?

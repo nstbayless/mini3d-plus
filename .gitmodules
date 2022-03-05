@@ -1,0 +1,3 @@
+[submodule "lib/eigen"]
+	path = lib/eigen
+	url = https://github.com/PX4/eigen

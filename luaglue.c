@@ -8,9 +8,11 @@
 
 #include <math.h>
 #include "luaglue.h"
+#include "render.h"
 #include "mini3d.h"
 #include "shape.h"
 #include "scene.h"
+#include "collision.h"
 
 PlaydateAPI* pd = NULL;
 
@@ -19,6 +21,7 @@ static const lua_reg lib3DNode[];
 static const lua_reg lib3DShape[];
 static const lua_reg lib3DPoint[];
 static const lua_reg lib3DMatrix[];
+static const lua_reg lib3DMath[];
 
 void register3D(PlaydateAPI* playdate)
 {
@@ -41,6 +44,9 @@ void register3D(PlaydateAPI* playdate)
 	if ( !pd->lua->registerClass("lib3d.matrix", lib3DMatrix, NULL, 0, &err) )
 		pd->system->logToConsole("%s:%i: registerClass failed, %s", __FILE__, __LINE__, err);
 	
+	if ( !pd->lua->registerClass("lib3d.math", lib3DMath, NULL, 0, &err) )
+		pd->system->logToConsole("%s:%i: registerClass failed, %s", __FILE__, __LINE__, err);
+	
 	mini3d_setRealloc(pd->system->realloc);
 }
 
@@ -58,6 +64,7 @@ static Scene3D* getScene(int n)			{ return get3DObj(n, "lib3d.scene"); }
 static Scene3DNode* getSceneNode(int n)	{ return get3DObj(n, "lib3d.scenenode"); }
 static Shape3D* getShape(int n)			{ return get3DObj(n, "lib3d.shape"); }
 static Point3D* getPoint(int n)			{ return get3DObj(n, "lib3d.point"); }
+static Vector3D* getVector(int n)	    { return get3DObj(n, "lib3d.point"); }
 static Matrix3D* getMatrix(int n)		{ return get3DObj(n, "lib3d.matrix"); }
 
 /// Scene
@@ -95,6 +102,7 @@ static int scene_draw(lua_State* L)
 	return 0;
 }
 
+#if ENABLE_Z_BUFFER
 static int draw_zbuff(lua_State* L)
 {
 	render_zbuff(pd->graphics->getFrame(), LCD_ROWSIZE);
@@ -102,6 +110,7 @@ static int draw_zbuff(lua_State* L)
 	
 	return 0;
 }
+#endif
 
 static int scene_drawNode(lua_State* L)
 {
@@ -193,7 +202,9 @@ static const lua_reg lib3DScene[] =
 	{ "__gc",			scene_gc },
 	{ "new",			scene_new },
 	{ "draw",			scene_draw },
+#if ENABLE_Z_BUFFER
 	{ "drawZBuff",		draw_zbuff },
+#endif
 	{ "drawNode",		scene_drawNode },
 	{ "getRootNode",	scene_getRoot },
 	{ "setLight",		scene_setLight },
@@ -467,6 +478,44 @@ static int shape_setClosed(lua_State* L)
 	return 0;
 }
 
+static int shape_collideSphere(lua_State* L)
+{
+	Shape3D* shape = getShape(1);
+	Point3D* centre = getPoint(2);
+	float radius = pd->lua->getArgFloat(3);
+	Vector3D o_normal;
+	
+	for (int i = 0; i < shape->nFaces; ++i)
+	{
+		Face3D* face = &shape->faces[i];
+		Point3D* p1 = &shape->points[face->p1];
+		Point3D* p2 = &shape->points[face->p2];
+		Point3D* p3 = &shape->points[face->p3];
+		if (test_sphere_triangle(centre, radius, p1, p2, p3, &o_normal))
+		{
+			goto collision_detected;
+		} else if (face->p4 != 0xffff)
+		{
+			Point3D* p4 = &shape->points[face->p4];
+			if (test_sphere_triangle(centre, radius, p1, p3, p4, &o_normal))
+			{
+				goto collision_detected;
+			}
+		}
+	}
+	
+	pd->lua->pushBool(0);
+	
+	return 1;
+	
+collision_detected:
+	pd->lua->pushBool(1);
+	Point3D* normal = m3d_malloc(sizeof(Point3D));
+	memcpy(normal, &o_normal, sizeof(Vector3D));
+	pd->lua->pushObject(normal, "lib3d.point", 0);
+	return 2;
+}
+
 #if ENABLE_ORDERING_TABLE
 static int shape_setOrderTableSize(lua_State* L)
 {
@@ -481,6 +530,7 @@ static const lua_reg lib3DShape[] =
 	{ "__gc",			shape_gc },
 	{ "addFace",		shape_addFace },
 	{ "setClosed", 		shape_setClosed },
+	{ "collidesSphere", shape_collideSphere },
 #if ENABLE_ORDERING_TABLE
 	{ "setOrderTableSize", shape_setOrderTableSize, },
 #endif
@@ -509,6 +559,11 @@ static int point_gc(lua_State* L)
 
 static int point_index(lua_State* L)
 {
+	if (pd->lua->indexMetatable())
+	{
+		return 1;
+	}
+	
 	Point3D* p = getPoint(1);
 	const char* arg = pd->lua->getArgString(2);
 	
@@ -519,7 +574,7 @@ static int point_index(lua_State* L)
 	else if ( strcmp(arg, "z") == 0 )
 		pd->lua->pushFloat(p->z);
 	else
-		pd->lua->pushNil();
+		return 0;
 	
 	return 1;
 }
@@ -542,11 +597,79 @@ static int point_newindex(lua_State* L)
 static int point_mul(lua_State* L)
 {
 	Point3D* p = getPoint(1);
-	Matrix3D* m = getMatrix(2);
+	if (pd->lua->getArgType(2, NULL) == kTypeFloat)
+	{
+		float f = pd->lua->getArgFloat(2);
+		Point3D* p2 = m3d_malloc(sizeof(Point3D));
+		p2->x = p->x * f;
+		p2->y = p->y * f;
+		p2->z = p->z * f;
+		pd->lua->pushObject(p2, "lib3d.point", 0);
+	}
+	else
+	{
+		Matrix3D* m = getMatrix(2);
 
-	Point3D* p2 = m3d_malloc(sizeof(Point3D));
-	*p2 = Matrix3D_apply(*m, *p);
-	pd->lua->pushObject(p2, "lib3d.point", 0);
+		Point3D* p2 = m3d_malloc(sizeof(Point3D));
+		*p2 = Matrix3D_apply(*m, *p);
+		pd->lua->pushObject(p2, "lib3d.point", 0);
+	}
+	return 1;
+}
+
+static int point_add(lua_State* L)
+{
+	Point3D* p = getPoint(1);
+	Point3D* p2 = getPoint(2);
+
+	Point3D* p3 = m3d_malloc(sizeof(Point3D));
+	p3->x = p->x + p2->x;
+	p3->y = p->y + p2->y;
+	p3->z = p->z + p2->z;
+	pd->lua->pushObject(p3, "lib3d.point", 0);
+	return 1;
+}
+
+static int point_sub(lua_State* L)
+{
+	Point3D* p = getPoint(1);
+	Point3D* p2 = getPoint(2);
+
+	Point3D* p3 = m3d_malloc(sizeof(Point3D));
+	p3->x = p->x - p2->x;
+	p3->y = p->y - p2->y;
+	p3->z = p->z - p2->z;
+	pd->lua->pushObject(p3, "lib3d.point", 0);
+	return 1;
+}
+
+// in-place normalization
+static int vec3d_normalize(lua_State* L)
+{
+	Vector3D* p1 = getVector(1);
+	*p1 = Vector3D_normalize(*p1);
+	return 0;
+}
+
+static int vec3d_length_squared(lua_State* L)
+{
+	Vector3D* p1 = getVector(1);
+	pd->lua->pushFloat(Vector3D_lengthSquared(p1));
+	return 1;
+}
+
+static int vec3d_length(lua_State* L)
+{
+	Vector3D* p1 = getVector(1);
+	pd->lua->pushFloat(Vector3D_length(p1));
+	return 1;
+}
+
+static int vec3d_dot(lua_State* L)
+{
+	Vector3D* p1 = getVector(1);
+	Vector3D* p2 = getVector(2);
+	pd->lua->pushFloat(Vector3DDot(*p1, *p2));
 	return 1;
 }
 
@@ -557,6 +680,12 @@ static const lua_reg lib3DPoint[] =
 	{ "__index",		point_index },
 	{ "__newindex",		point_newindex },
 	{ "__mul",			point_mul },
+	{ "__add",			point_add },
+	{ "__sub",			point_sub },
+	{ "dot",   			vec3d_dot },
+	{ "length",  		vec3d_length },
+	{ "lengthSquared",  vec3d_length_squared },
+	{ "normalize",  	vec3d_normalize},
 	{ NULL,				NULL }
 };
 
@@ -657,6 +786,39 @@ static const lua_reg lib3DMatrix[] =
 	{ "new",			matrix_new },
 	{ "newRotation",	matrix_newRotation },
 	{ "addTranslation",	matrix_addTranslation },
+	{ NULL,				NULL }
+};
+
+static int sphere_collide_triangle(lua_State* L)
+{
+	Point3D* centre = getPoint(1);
+	float radius = pd->lua->getArgFloat(2);
+	Point3D* p1 = getPoint(3);
+	Point3D* p2 = getPoint(4);
+	Point3D* p3 = getPoint(5);
+	
+	Vector3D normal;
+	int result = test_sphere_triangle(centre, radius, p1, p2, p3, &normal);
+	pd->lua->pushBool(
+		result
+	);
+	
+	if (result)
+	{
+		Point3D* o_normal = m3d_malloc(sizeof(Point3D));
+		memcpy(o_normal, &normal, sizeof(Vector3D));
+		pd->lua->pushObject(o_normal, "lib3d.point", 0);
+		return 2;
+	}
+	else
+	{
+		return 1;
+	}
+}
+
+static const lua_reg lib3DMath[] =
+{
+	{ "collide_sphere_triangle", sphere_collide_triangle },
 	{ NULL,				NULL }
 };
 

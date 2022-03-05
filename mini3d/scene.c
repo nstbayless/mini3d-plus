@@ -266,18 +266,29 @@ Scene3D_updateShapeInstance(Scene3D* scene, ShapeInstance* shape, Matrix3D xform
 	{
 		Point3D* p = &shape->points[i];
 		
-		if ( p->z > 0 )
+		if ( scene->hasPerspective )
 		{
-			if ( scene->hasPerspective )
+			float mult = 1.0;
+			if (p->z < 1 && p->z > -10)
 			{
-				p->x = scene->scale * (p->x / p->z + 1.6666666 * scene->centerx);
-				p->y = scene->scale * (p->y / p->z + scene->centery);
+				mult = exp(-p->z + 1);
+			}
+			else if (p->z <= -10)
+			{
+				mult = exp(11);
 			}
 			else
 			{
-				p->x = scene->scale * (p->x + 1.6666666 * scene->centerx);
-				p->y = scene->scale * (p->y + scene->centery);
+				mult = 1.0 / p->z;
 			}
+			
+			p->x = scene->scale * (p->x * mult + 1.6666666 * scene->centerx);
+			p->y = scene->scale * (p->y * mult + scene->centery);
+		}
+		else
+		{
+			p->x = scene->scale * (p->x + 1.6666666 * scene->centerx);
+			p->y = scene->scale * (p->y + scene->centery);
 		}
 		
 #if ENABLE_Z_BUFFER
@@ -552,11 +563,11 @@ static Pattern patterns[] =
 static inline void
 drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride, FaceInstance* face)
 {
-	
-	// If any vertex is behind the camera, skip the whole face
-	if ( face->p1->z <= 0 || face->p2->z <= 0 || face->p3->z <= 0
-		|| (face->p4 && face->p4->z <= 0))
-			return;
+	/*
+	// If all vertices are behind the camera, skip the whole face
+	if ( face->p1->z <= 0 && face->p2->z <= 0 && face->p3->z <= 0
+		|| (!face->p4 || face->p4->z <= 0))
+			return;*/
 	
 	float x1 = face->p1->x;
 	float y1 = face->p1->y;

@@ -22,6 +22,7 @@ SRC = \
 	mini3d/scene.c \
 	mini3d/shape.c \
 	mini3d/render.c \
+	collision.c \
 	luaglue.c
 
 ASRC = setup.s
