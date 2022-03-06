@@ -18,6 +18,10 @@
 // intersecting geometry in the scene.
 #define ENABLE_ORDERING_TABLE 0
 
+#define FACE_CLIPPING 1
+
+#define CLIP_EPSILON 0.5
+
 #include <stddef.h>
 
 extern void* (*m3d_realloc)(void* ptr, size_t size);

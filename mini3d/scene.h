@@ -36,6 +36,18 @@ typedef enum
 	kRenderWireframeWhite	= (1<<3) // 0 = black, 1 = white
 } RenderStyle;
 
+typedef struct
+{
+	Point3D* p1;
+	Point3D p2;
+	Point3D p3;
+	Point3D p4;
+	FaceInstance* src;
+} ClippedFace3D;
+
+#define CLIP_RESIZE 0x10
+#define MAXCLIP_CAPACITY 0x60
+
 struct ShapeInstance
 {
 	Shape3D* prototype; // pointer to original shape
@@ -47,6 +59,10 @@ struct ShapeInstance
 	Point3D* points;
 	int nFaces;
 	FaceInstance* faces;
+	// clipped faces are stored separately
+	int nClip;
+	int clipCapacity;
+	ClippedFace3D* clip;
 	Point3D center;
 	float colorBias;
 	RenderStyle renderStyle;

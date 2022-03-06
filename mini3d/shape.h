@@ -30,6 +30,7 @@ typedef struct
 	Face3D* faces;
 	Point3D center; // used for z-sorting entire shapes at a time
 	float colorBias;
+	
 	int isClosed : 1;
 #if ENABLE_ORDERING_TABLE
 	int orderTableSize;

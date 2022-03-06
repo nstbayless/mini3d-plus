@@ -1,11 +1,18 @@
 scene = lib3d.scene.new()
 scene:setCameraOrigin(0, 5, 6)
+scene:setLight(0, 0, 1)
 
 local rad_to_deg = 180 / math.pi
 
 n = scene:getRootNode()
 n2 = n:addChildNode()
 terrain = lib3d.shape.new()
+
+local function swap(a, i, j)
+    local tmp = a[i]
+    a[i] = a[j]
+    a[j] = tmp
+end
 
 local function face_vertex(face, i)
     return lib3d.point.new(
@@ -29,9 +36,6 @@ if j then
     for _, face in ipairs(j["faces"]) do
         terrain:addFace(
             table.unpack(face_vertices(face))
-            --face_vertex(face, 1),
-            --face_vertex(face, 3),
-            --face_vertex(face, 4)
         )
     end
 end
@@ -57,20 +61,24 @@ kart = {
     r = 1,
     
     -- facing
-    f = lib3d.point.new(),
+    f = lib3d.point.new(-1, -1, 0),
     
     -- velocity
     v = lib3d.point.new(),
     
-    gravity = -0.05,
+    gravity = -0.06,
+    
+    -- not the *literal* maximum speed.
+    TOP_SPEED = 4,
     
     input = function(self)
         local theta = math.atan2(self.f.y, self.f.x)
+        local theta_mult = math.exp(-self.v:length() * 3 / self.TOP_SPEED)
         if playdate.buttonIsPressed(playdate.kButtonLeft) then
-            theta -= 0.05
+            theta -= 0.05 * theta_mult
         end
         if playdate.buttonIsPressed(playdate.kButtonRight) then
-            theta += 0.05
+            theta += 0.05 * theta_mult
         end
         self.f.x = math.cos(theta)
         self.f.y = math.sin(theta)
@@ -79,9 +87,10 @@ kart = {
        self.v -= normal * (normal:dot(self.v) + 0.01)
     end,
     update = function(self)
-        local p = 0.97
-        self.v.x = self.v.x * p + self.f.x * (1 - p)
-        self.v.y = self.v.y * p + self.f.y * (1 - p)
+        local p = 0.95
+        local qspeed = math.min(self.TOP_SPEED, math.max(0.5, self.f:dot(self.v)) * 1.1)
+        self.v.x = self.v.x * p + self.f.x * (1 - p) * qspeed
+        self.v.y = self.v.y * p + self.f.y * (1 - p) * qspeed
         self.v.z += self.gravity
         
         for i = 0,5 do
@@ -99,7 +108,7 @@ kart = {
                     print("GIVE UP")
                     self.v.x = -self.f.x / 10
                     self.v.y = -self.f.y / 10
-                    self.v.z = -0.2
+                    self.v.z = 0.2
                 elseif i == 3 then
                     -- add a bit of the normal directly to position
                     self.v -= normal * 0.1
@@ -128,12 +137,12 @@ kart = {
     end,
     setShoulderCamera = function(self, scene)
         local radius = 10
-        local attack = 0.4
+        local attack = 0.5
         scene:setCameraOrigin(
             self.pos.x- self.f.x * radius,
             self.pos.y - self.f.y * radius,
             self.pos.z + radius * attack)
-        scene:setCameraTarget(self.pos.x, self.pos.y, self.pos.z)
+        scene:setCameraTarget(self.pos.x, self.pos.y, self.pos.z + self.r * 4)
         scene:setCameraUp(0, 0, -1)
     end
 }

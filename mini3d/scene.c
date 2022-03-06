@@ -150,6 +150,10 @@ Scene3DNode_addShapeWithTransform(Scene3DNode* node, Shape3D* shape, Matrix3D tr
 	nodeshape->nFaces = shape->nFaces;
 	nodeshape->faces = m3d_malloc(sizeof(FaceInstance) * shape->nFaces);
 	
+	nodeshape->clipCapacity = 0;
+	nodeshape->nClip = 0;
+	nodeshape->clip = NULL;
+	
 	for ( i = 0; i < shape->nFaces; ++i )
 	{
 		// point face vertices at copy's points array
@@ -210,6 +214,297 @@ Scene3DNode_newChild(Scene3DNode* node)
 	return child;
 }
 
+static void applyPerspectiveToPoint(Scene3D* scene, Point3D* p)
+{
+	if ( scene->hasPerspective )
+	{
+		if (p->z > CLIP_EPSILON / 2)
+		{
+			p->x = scene->scale * (p->x / p->z + 1.6666666 * scene->centerx);
+			p->y = scene->scale * (p->y / p->z + scene->centery);
+		}
+	}
+	else
+	{
+		p->x = scene->scale * (p->x + 1.6666666 * scene->centerx);
+		p->y = scene->scale * (p->y + scene->centery);
+	}
+}
+
+#if FACE_CLIPPING
+Scene3D* clipScene; // stored globally for ease of access.
+static ClippedFace3D* clipAllocate(ShapeInstance* shape, FaceInstance* face)
+{
+	int index = shape->nClip++;
+	if (shape->nClip > shape->clipCapacity)
+	{
+		shape->clipCapacity += CLIP_RESIZE;
+		shape->clip = m3d_realloc(shape->clip, shape->clipCapacity * sizeof(ClippedFace3D));
+	}
+	shape->clip[index].p1 = NULL;
+	shape->clip[index].src = face;
+	return &shape->clip[index];
+}
+
+static void interpolatePointAtZClip(Point3D* out, Point3D* a, Point3D* b)
+{
+	float p = (CLIP_EPSILON - b->z) / (a->z - b->z);
+	out->z = CLIP_EPSILON;
+	out->x = p * a->x + (1 - p) * b->x;
+	out->y = p * a->y + (1 - p) * b->y;
+}
+
+// one point in front of camera, two points behind.
+static void calculateClipping_straddle12(ClippedFace3D* clip, Point3D* a, Point3D* b1, Point3D* b2)
+{
+	clip->p2 = *a;
+	interpolatePointAtZClip(&clip->p3, a, b1);
+	interpolatePointAtZClip(&clip->p4, a, b2);
+	
+	applyPerspectiveToPoint(clipScene, &clip->p2);
+	applyPerspectiveToPoint(clipScene, &clip->p3);
+	applyPerspectiveToPoint(clipScene, &clip->p4);
+}
+
+// two points in front of camera, one point behind.
+static void calculateClipping_straddle21(ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* b)
+{
+	clip->p1 = a1;
+	clip->p2 = *a2;
+	interpolatePointAtZClip(&clip->p3, a2, b);
+	interpolatePointAtZClip(&clip->p4, a1, b);
+	
+	applyPerspectiveToPoint(clipScene, &clip->p2);
+	applyPerspectiveToPoint(clipScene, &clip->p3);
+	applyPerspectiveToPoint(clipScene, &clip->p4);
+}
+
+// two points in front of camera, two points behind.
+static void calculateClipping_straddle22(ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* b1, Point3D* b2)
+{
+	clip->p1 = a1;
+	clip->p2 = *a2;
+	interpolatePointAtZClip(&clip->p3, a2, b1);
+	interpolatePointAtZClip(&clip->p4, a1, b2);
+	
+	applyPerspectiveToPoint(clipScene, &clip->p2);
+	applyPerspectiveToPoint(clipScene, &clip->p3);
+	applyPerspectiveToPoint(clipScene, &clip->p4);
+}
+
+// three points in front of camera, zero behind.
+static void calculateClipping_straddle30(ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* a3)
+{
+	clip->p2 = *a1;
+	clip->p3 = *a2;
+	clip->p4 = *a3;
+	
+	applyPerspectiveToPoint(clipScene, &clip->p2);
+	applyPerspectiveToPoint(clipScene, &clip->p3);
+	applyPerspectiveToPoint(clipScene, &clip->p4);
+}
+
+static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstance* face)
+{
+	Point3D* p1 = face->p1;
+	Point3D* p2 = face->p2;
+	Point3D* p3 = face->p3;
+	
+	uint8_t q1 = p1->z > CLIP_EPSILON / 2;
+	uint8_t q2 = p2->z > CLIP_EPSILON / 2;
+	uint8_t q3 = p3->z > CLIP_EPSILON / 2;
+	
+	if (face->p4)
+	{
+		Point3D* p4 = face->p4;
+		uint8_t q4 = p4->z > CLIP_EPSILON / 2;
+		if (q4 && q3 && q2 && q1) return;
+		else if (!q4 && !q3 && !q2 && !q1) return;
+		else if (q1 && !q2 && !q3 && !q4)
+		{
+			calculateClipping_straddle12(
+				clipAllocate(shape, face),
+				p1, p2, p4
+			);
+		}
+		else if (!q1 && q2 && !q3 && !q4)
+		{
+			calculateClipping_straddle12(
+				clipAllocate(shape, face),
+				p2, p3, p1
+			);
+		}
+		else if (!q1 && !q2 && q3 && !q4)
+		{
+			calculateClipping_straddle12(
+				clipAllocate(shape, face),
+				p3, p4, p2
+			);
+		}
+		else if (!q1 && !q2 && !q3 && q4)
+		{
+			calculateClipping_straddle12(
+				clipAllocate(shape, face),
+				p4, p1, p3
+			);
+		}
+		else if (q1 && q2 && !q3 && !q4)
+		{
+			calculateClipping_straddle22(
+				clipAllocate(shape, face),
+				p1, p2, p3, p4
+			);
+		}
+		else if (!q1 && q2 && q3 && !q4)
+		{
+			calculateClipping_straddle22(
+				clipAllocate(shape, face),
+				p2, p3, p4, p1
+			);
+		}
+		else if (!q1 && !q2 && q3 && q4)
+		{
+			calculateClipping_straddle22(
+				clipAllocate(shape, face),
+				p3, p4, p1, p2
+			);
+		}
+		else if (q1 && !q2 && !q3 && q4)
+		{
+			calculateClipping_straddle22(
+				clipAllocate(shape, face),
+				p4, p1, p2, p3
+			);
+		}
+		else if (q1 && q2 && !q3 && !q4)
+		{
+			calculateClipping_straddle22(
+				clipAllocate(shape, face),
+				p1, p2, p3, p4
+			);
+		}
+		else if (!q1 && q2 && q3 && q4)
+		{
+			calculateClipping_straddle30(
+				clipAllocate(shape, face),
+				p2, p3, p4
+			);
+			calculateClipping_straddle21(
+				clipAllocate(shape, face),
+				p2, p4, p1
+			);
+		}
+		else if (q1 && !q2 && q3 && q4)
+		{
+			calculateClipping_straddle30(
+				clipAllocate(shape, face),
+				p3, p4, p1
+			);
+			calculateClipping_straddle21(
+				clipAllocate(shape, face),
+				p3, p1, p2
+			);
+		}
+		else if (q1 && q2 && !q3 && q4)
+		{
+			calculateClipping_straddle30(
+				clipAllocate(shape, face),
+				p4, p1, p2
+			);
+			calculateClipping_straddle21(
+				clipAllocate(shape, face),
+				p4, p2, p3
+			);
+		}
+		else if (q1 && q2 && q3 && !q4)
+		{
+			calculateClipping_straddle30(
+				clipAllocate(shape, face),
+				p1, p2, p3
+			);
+			calculateClipping_straddle21(
+				clipAllocate(shape, face),
+				p1, p3, p4
+			);
+		}
+	}
+	else
+	{
+		if (q1 && q2 && q3) return;
+		else if (!q1 && !q2 && !q3) return;
+		else if (q1 && !q2 && !q3)
+		{
+			calculateClipping_straddle12(
+				clipAllocate(shape, face),
+				p1, p2, p3
+			);
+		}
+		else if (!q1 && q2 && !q3)
+		{
+			calculateClipping_straddle12(
+				clipAllocate(shape, face),
+				p2, p1, p3
+			);
+		}
+		else if (!q1 && !q2 && q3)
+		{
+			calculateClipping_straddle12(
+				clipAllocate(shape, face),
+				p3, p2, p1
+			);
+		}
+		else if (q1 && q2 && !q3)
+		{
+			calculateClipping_straddle21(
+				clipAllocate(shape, face),
+				p1, p2, p3
+			);
+		}
+		else if (q1 && !q2 && q3)
+		{
+			calculateClipping_straddle21(
+				clipAllocate(shape, face),
+				p3, p1, p2
+			);
+		}
+		else if (!q1 && q2 && q3)
+		{
+			calculateClipping_straddle21(
+				clipAllocate(shape, face),
+				p2, p3, p1
+			);
+		}
+	}
+}
+
+// adds clipped faces for those faces which straddle Z=0
+static void calculateClipping(ShapeInstance* shape)
+{
+	// reset clip buffer
+	shape->nClip = 0;
+	
+	// determine which faces need clipping
+	for (int i = 0; i < shape->nFaces; ++i)
+	{
+		FaceInstance* face = &shape->faces[i];
+		calculateClipping_straddleDispatch(shape, face);
+		
+		if (shape->nClip >= MAXCLIP_CAPACITY - 2)
+		{
+			return;
+		}
+	}
+	
+	// free clip buffer if unused
+	if (shape->nClip == 0 && shape->clipCapacity > 0)
+	{
+		shape->clipCapacity = 0;
+		m3d_free(shape->clip);
+		shape->clip = NULL;
+	}
+}
+#endif
+
 static void
 Scene3D_updateShapeInstance(Scene3D* scene, ShapeInstance* shape, Matrix3D xform, float colorBias, RenderStyle style)
 {
@@ -260,36 +555,17 @@ Scene3D_updateShapeInstance(Scene3D* scene, ShapeInstance* shape, Matrix3D xform
 #endif
 	}
 	
+	#if FACE_CLIPPING
+	clipScene = scene;
+	calculateClipping(shape);
+	#endif
+	
 	// apply perspective, scale to display
 	
 	for ( i = 0; i < shape->nPoints; ++i )
 	{
 		Point3D* p = &shape->points[i];
-		
-		if ( scene->hasPerspective )
-		{
-			float mult = 1.0;
-			if (p->z < 1 && p->z > -10)
-			{
-				mult = exp(-p->z + 1);
-			}
-			else if (p->z <= -10)
-			{
-				mult = exp(11);
-			}
-			else
-			{
-				mult = 1.0 / p->z;
-			}
-			
-			p->x = scene->scale * (p->x * mult + 1.6666666 * scene->centerx);
-			p->y = scene->scale * (p->y * mult + scene->centery);
-		}
-		else
-		{
-			p->x = scene->scale * (p->x + 1.6666666 * scene->centerx);
-			p->y = scene->scale * (p->y + scene->centery);
-		}
+		applyPerspectiveToPoint(scene, p);
 		
 #if ENABLE_Z_BUFFER
 		if ( p->z < scene->zmin )
@@ -563,11 +839,12 @@ static Pattern patterns[] =
 static inline void
 drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride, FaceInstance* face)
 {
-	/*
-	// If all vertices are behind the camera, skip the whole face
-	if ( face->p1->z <= 0 && face->p2->z <= 0 && face->p3->z <= 0
-		|| (!face->p4 || face->p4->z <= 0))
-			return;*/
+	// If any vertex is behind the camera, skip the whole face
+	// TODO: consider caching the 'cull' computation.
+	// (we will render it elsewhere when we render clipped polygons )
+	if ( face->p1->z <= CLIP_EPSILON / 2 || face->p2->z <= CLIP_EPSILON / 2 || face->p3->z <= CLIP_EPSILON / 2
+		|| (face->p4 && face->p4->z <= CLIP_EPSILON / 2))
+			return;
 	
 	float x1 = face->p1->x;
 	float y1 = face->p1->y;
@@ -673,6 +950,26 @@ drawFilledShape(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowst
 #endif
 	for ( int f = 0; f < shape->nFaces; ++f )
 		drawShapeFace(scene, shape, bitmap, rowstride, &shape->faces[f]);
+		
+	// XXX (ORDERING_TABLE only)
+	// NOTE (ORDERING_TABLE): we are incorrectly assuming that culled faces are ALWAYS closest to the camera.
+	
+	#if FACE_CLIPPING
+	for ( int i = 0; i < shape->nClip; ++i)
+	{
+		ClippedFace3D* clip = &shape->clip[i];
+		
+		// create a fictitious face instance for each clipped face, and render that.
+		FaceInstance f;
+		memcpy(&f, clip->src, sizeof(FaceInstance));
+		f.p1 = &clip->p2;
+		f.p2 = &clip->p3;
+		f.p3 = &clip->p4;
+		f.p4 = clip->p1;
+		
+		drawShapeFace(scene, shape, bitmap, rowstride, &f);
+	}
+	#endif
 }
 
 static inline void
@@ -802,7 +1099,7 @@ Scene3D_draw(Scene3D* scene, uint8_t* bitmap, int rowstride)
 	Scene3D_updateNode(scene, &scene->root, scene->camera, 0, kRenderFilled, 0);
 	
 #if ENABLE_Z_BUFFER
-	resetZBuffer(4);
+	resetZBuffer(1);
 #endif
 	
 	Scene3D_drawNode(scene, &scene->root, bitmap, rowstride);
