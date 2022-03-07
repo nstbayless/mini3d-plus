@@ -21,6 +21,7 @@ SRC = \
 	mini3d/3dmath.c \
 	mini3d/scene.c \
 	mini3d/shape.c \
+	mini3d/imposter.c \
 	mini3d/render.c \
 	collision.c \
 	luaglue.c

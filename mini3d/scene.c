@@ -26,7 +26,8 @@ Scene3DNode_init(Scene3DNode* node)
 	node->parentNode = NULL;
 	node->childNodes = NULL;
 	node->nChildren = 0;
-	node->shapes = NULL;
+	node->nInstance = 0;
+	node->instances = NULL;
 	node->colorBias = 0;
 	node->renderStyle = kRenderInheritStyle;
 	node->isVisible = 1;
@@ -39,21 +40,33 @@ Scene3DNode_init(Scene3DNode* node)
 void
 Scene3DNode_deinit(Scene3DNode* node)
 {
-	ShapeInstance* shape = node->shapes;
+	InstanceHeader* instance = node->instances;
 	
-	while ( shape != NULL )
+	while ( instance != NULL )
 	{
-		ShapeInstance* next = shape->next;
-		Shape3D_release(shape->prototype);
-		m3d_free(shape->points);
-		m3d_free(shape->faces);
-		m3d_free(shape);
-		shape = next;
+		InstanceHeader* next = instance->next;
+		switch(instance->type)
+		{
+		case kInstanceTypeShape: {
+				ShapeInstance* shape = (ShapeInstance*)instance;
+				Shape3D_release(shape->prototype);
+				m3d_free(shape->points);
+				m3d_free(shape->faces);
+			}
+			break;
+		case kInstanceTypeImposter: {
+				ImposterInstance* imposter = (ImposterInstance*)instance;
+				Imposter3D_release(imposter->prototype);
+			}
+			break;
+		}
+		m3d_free(instance);
+		instance = next;
 	}
 	
-	if ( node->shapes != NULL )
-		m3d_free(node->shapes);
-	
+	if ( node->instances != NULL )
+		m3d_free(node->instances);
+		
 	int i;
 	
 	for ( i = 0; i < node->nChildren; ++i )
@@ -138,6 +151,7 @@ Scene3DNode_addShapeWithTransform(Scene3DNode* node, Shape3D* shape, Matrix3D tr
 	ShapeInstance* nodeshape = m3d_malloc(sizeof(ShapeInstance));
 	int i;
 	
+	nodeshape->header.type = kInstanceTypeShape;
 	nodeshape->renderStyle = kRenderInheritStyle;
 	nodeshape->prototype = Shape3D_retain(shape);
 	nodeshape->nPoints = shape->nPoints;
@@ -174,8 +188,8 @@ Scene3DNode_addShapeWithTransform(Scene3DNode* node, Shape3D* shape, Matrix3D tr
 		face->normal = normal(face->p1, face->p2, face->p3);
 	}
 	
-	nodeshape->transform = transform;
-	nodeshape->center = Matrix3D_apply(transform, shape->center);
+	nodeshape->header.transform = transform;
+	nodeshape->header.center = Matrix3D_apply(transform, shape->center);
 	nodeshape->colorBias = 0;
 	
 #if ENABLE_ORDERING_TABLE
@@ -183,9 +197,9 @@ Scene3DNode_addShapeWithTransform(Scene3DNode* node, Shape3D* shape, Matrix3D tr
 	nodeshape->orderTable = NULL;
 #endif
 	
-	nodeshape->next = node->shapes;
-	node->shapes = nodeshape;
-	++node->shapeCount;
+	nodeshape->header.next = node->instances;
+	node->instances = &nodeshape->header;
+	++node->nInstance;
 }
 
 void
@@ -198,6 +212,24 @@ void
 Scene3DNode_addShape(Scene3DNode* node, Shape3D* shape)
 {
 	Scene3DNode_addShapeWithTransform(node, shape, identityMatrix);
+}
+
+void Scene3DNode_addImposterWithTransform(Scene3DNode* node, Imposter3D* imposter, Matrix3D transform)
+{
+	ImposterInstance* nodeimp = m3d_malloc(sizeof(ImposterInstance));
+	nodeimp->header.type = kInstanceTypeImposter;
+	nodeimp->prototype = Imposter3D_retain(imposter);
+	nodeimp->header.transform = transform;
+	nodeimp->header.center = Matrix3D_apply(transform, imposter->center);
+	
+	nodeimp->header.next = node->instances;
+	node->instances = &nodeimp->header;
+	++node->nInstance;
+}
+
+void Scene3DNode_addImposter(Scene3DNode* node, Imposter3D* imposter)
+{
+	Scene3DNode_addImposterWithTransform(node, imposter, identityMatrix);
 }
 
 Scene3DNode*
@@ -515,10 +547,10 @@ Scene3D_updateShapeInstance(Scene3D* scene, ShapeInstance* shape, Matrix3D xform
 	
 	for ( i = 0; i < shape->nPoints; ++i )
 	{
-		shape->points[i] = Matrix3D_apply(xform, Matrix3D_apply(shape->transform, proto->points[i]));
+		shape->points[i] = Matrix3D_apply(xform, Matrix3D_apply(shape->header.transform, proto->points[i]));
 	}
 
-	shape->center = Matrix3D_apply(xform, Matrix3D_apply(shape->transform, proto->center));
+	shape->header.center = Matrix3D_apply(xform, Matrix3D_apply(shape->header.transform, proto->center));
 	shape->colorBias = proto->colorBias + colorBias;
 	shape->renderStyle = style;
 	shape->inverted = xform.inverting;
@@ -592,6 +624,21 @@ Scene3D_updateShapeInstance(Scene3D* scene, ShapeInstance* shape, Matrix3D xform
 #endif
 }
 
+static void
+Scene3D_updateImposterInstance(Scene3D* scene, ImposterInstance* imposter, Matrix3D xform)
+{
+	Imposter3D* proto = imposter->prototype;
+	imposter->header.center = Matrix3D_apply(xform, Matrix3D_apply(imposter->header.transform, proto->center));
+	imposter->tl = imposter->header.center;
+	imposter->br = imposter->header.center;
+	imposter->tl.x += proto->x1;
+	imposter->tl.y += proto->y1;
+	imposter->br.x += proto->x2;
+	imposter->br.y += proto->y2;
+	applyPerspectiveToPoint(scene, &imposter->tl);
+	applyPerspectiveToPoint(scene, &imposter->br);
+}
+
 void
 Scene3D_updateNode(Scene3D* scene, Scene3DNode* node, Matrix3D xform, float colorBias, RenderStyle style, int update)
 {
@@ -612,24 +659,33 @@ Scene3D_updateNode(Scene3D* scene, Scene3DNode* node, Matrix3D xform, float colo
 		if ( node->renderStyle != kRenderInheritStyle )
 			style = node->renderStyle;
 		
-		ShapeInstance* shape = node->shapes;
+		// update instances
+		InstanceHeader* instance = node->instances;
 		
-		while ( shape != NULL )
+		while ( instance != NULL )
 		{
-			Scene3D_updateShapeInstance(scene, shape, xform, colorBias, style);
+			switch(instance->type)
+			{
+			case kInstanceTypeShape:
+				Scene3D_updateShapeInstance(scene, (ShapeInstance*)instance, xform, colorBias, style);
+				break;
+			case kInstanceTypeImposter:
+				Scene3D_updateImposterInstance(scene, (ImposterInstance*)instance, xform);
+				break;
+			}
 #if ENABLE_Z_BUFFER
-			shape->useZBuffer = node->useZBuffer;
+			instance->useZBuffer = node->useZBuffer;
 #endif
-			shape = shape->next;
+			instance = instance->next;
 		}
 		
+		// update children
 		int i;
 		
 		for ( i = 0; i < node->nChildren; ++i )
 			Scene3D_updateNode(scene, node->childNodes[i], xform, colorBias, style, update);
 	}
 }
-
 
 void
 Scene3D_init(Scene3D* scene)
@@ -643,15 +699,15 @@ Scene3D_init(Scene3D* scene)
 
 	Scene3DNode_init(&scene->root);
 	
-	scene->shapelist = NULL;
-	scene->shapelistsize = 0;
+	scene->instancelist = NULL;
+	scene->instancelistsize = 0;
 }
 
 void
 Scene3D_deinit(Scene3D* scene)
 {
-	if ( scene->shapelist != NULL )
-		m3d_free(scene->shapelist);
+	if ( scene->instancelist != NULL )
+		m3d_free(scene->instancelist);
 	
 	Scene3DNode_deinit(&scene->root);
 }
@@ -676,35 +732,34 @@ Scene3D_getRootNode(Scene3D* scene)
 }
 
 static int
-getShapesAtNode(Scene3D* scene, Scene3DNode* node, int count)
+getInstancesAtNode(Scene3D* scene, Scene3DNode* node, int count)
 {
 	if ( !node->isVisible )
 		return count;
 	
-	ShapeInstance* shape = node->shapes;
-	ShapeInstance** shapes = scene->shapelist;
+	InstanceHeader* instance = node->instances;
+	InstanceHeader** instances = scene->instancelist;
 	
-	while ( shape != NULL )
+	while ( instance != NULL )
 	{
 		// check if shape is outside camera view: apply camera transform to shape center
 		
-		if ( count + 1 > scene->shapelistsize )
+		if ( count + 1 > scene->instancelistsize )
 		{
-#define SHAPELIST_INCREMENT 16
-			scene->shapelist = m3d_realloc(scene->shapelist, (scene->shapelistsize + SHAPELIST_INCREMENT) * sizeof(ShapeInstance*));
-			shapes = scene->shapelist;
-			
-			scene->shapelistsize += SHAPELIST_INCREMENT;
+			#define SHAPELIST_INCREMENT 0x20
+			scene->instancelistsize += SHAPELIST_INCREMENT;
+			scene->instancelist = m3d_realloc(scene->instancelist, scene->instancelistsize * sizeof(ShapeInstance*));
+			instances = scene->instancelist;
 		}
 		
-		shapes[count++] = shape;
-		shape = shape->next;
+		instances[count++] = instance;
+		instance = instance->next;
 	}
 	
 	int i;
 	
 	for ( i = 0; i < node->nChildren; ++i )
-		count = getShapesAtNode(scene, node->childNodes[i], count);
+		count = getInstancesAtNode(scene, node->childNodes[i], count);
 
 	return count;
 }
@@ -913,7 +968,7 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 	if ( face->p4 != NULL )
 	{
 #if ENABLE_Z_BUFFER
-		if ( shape->useZBuffer )
+		if ( shape->header.useZBuffer )
 			fillQuad_zbuf(bitmap, rowstride, face->p1, face->p2, face->p3, face->p4, pattern);
 		else
 #endif
@@ -922,13 +977,14 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 	else
 	{
 #if ENABLE_Z_BUFFER
-		if ( shape->useZBuffer )
+		if ( shape->header.useZBuffer )
 			fillTriangle_zbuf(bitmap, rowstride, face->p1, face->p2, face->p3, pattern);
 		else
 #endif
 			fillTriangle(bitmap, rowstride, face->p1, face->p2, face->p3, pattern);
 	}
 }
+
 static inline void
 drawFilledShape(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride)
 {
@@ -1021,8 +1077,10 @@ drawWireframe(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 		// XXX - can avoid 1/2 the drawing if we're doing the entire shape (kRenderWireframeBack is set)
 		// and the shape is closed: skip lines where y1 > y2
 		
+		// TODO: render clipped lines also.
+		
 #if ENABLE_Z_BUFFER
-		if ( shape->useZBuffer )
+		if ( shape->header.useZBuffer )
 		{
 			drawLine_zbuf(bitmap, rowstride, face->p1, face->p2, 1, color);
 			drawLine_zbuf(bitmap, rowstride, face->p2, face->p3, 1, color);
@@ -1054,10 +1112,31 @@ drawWireframe(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 	}
 }
 
+static void
+drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int rowstride)
+{
+	// FIXME: this function is just a temporary implementation
+	// pay no attention.
+	// destroy and rewrite from scratch.
+	uint8_t* pattern = (uint8_t*)&patterns[32];
+	
+	Point3D tr = imposter->tl;
+	tr.x = imposter->br.x;
+	Point3D bl = imposter->br;
+	tr.x = imposter->tl.x;
+	
+	#if ENABLE_Z_BUFFER
+	if ( imposter->header.useZBuffer )
+		fillQuad_zbuf(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, pattern);
+	else
+	#endif
+		fillQuad(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, pattern);
+}
+
 static int compareZ(const void* a, const void* b)
 {
-	ShapeInstance* shapea = *(ShapeInstance**)a;
-	ShapeInstance* shapeb = *(ShapeInstance**)b;
+	InstanceHeader* shapea = *(InstanceHeader**)a;
+	InstanceHeader* shapeb = *(InstanceHeader**)b;
 	
 	return shapea->center.z < shapeb->center.z;
 }
@@ -1067,25 +1146,37 @@ Scene3D_drawNode(Scene3D* scene, Scene3DNode* node, uint8_t* bitmap, int rowstri
 {
 	// order shapes by z
 	
-	int count = getShapesAtNode(scene, node, 0);
+	int count = getInstancesAtNode(scene, node, 0);
 	
 	// and draw back to front
 	
 	if ( count > 1 )
-		qsort(scene->shapelist, count, sizeof(ShapeInstance*), compareZ);
+		qsort(scene->instancelist, count, sizeof(InstanceHeader*), compareZ);
 	
 	int i;
 	
 	for ( i = 0; i < count; ++i )
 	{
-		ShapeInstance* shape = scene->shapelist[i];
-		RenderStyle style = shape->renderStyle;
-		
-		if ( style & kRenderFilled )
-			drawFilledShape(scene, shape, bitmap, rowstride);
-		
-		if ( style & kRenderWireframe )
-			drawWireframe(scene, shape, bitmap, rowstride);
+		InstanceHeader* instance = scene->instancelist[i];
+		switch (instance->type)
+		{
+		case kInstanceTypeShape: {
+				ShapeInstance* shape = (ShapeInstance*)instance;
+				RenderStyle style = shape->renderStyle;
+				
+				if ( style & kRenderFilled )
+					drawFilledShape(scene, shape, bitmap, rowstride);
+				
+				if ( style & kRenderWireframe )
+					drawWireframe(scene, shape, bitmap, rowstride);
+			}
+			break;
+		case kInstanceTypeImposter: {
+				ImposterInstance* imposter = (ImposterInstance*)instance;
+				drawImposter(scene, imposter, bitmap, rowstride);
+			}
+			break;
+		}
 	}
 }
 
@@ -1099,7 +1190,7 @@ Scene3D_draw(Scene3D* scene, uint8_t* bitmap, int rowstride)
 	Scene3D_updateNode(scene, &scene->root, scene->camera, 0, kRenderFilled, 0);
 	
 #if ENABLE_Z_BUFFER
-	resetZBuffer(1);
+	resetZBuffer(CLIP_EPSILON);
 #endif
 	
 	Scene3D_drawNode(scene, &scene->root, bitmap, rowstride);

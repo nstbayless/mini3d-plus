@@ -12,6 +12,7 @@
 #include <stdint.h>
 #include "3dmath.h"
 #include "shape.h"
+#include "imposter.h"
 
 struct FaceInstance
 {
@@ -48,11 +49,27 @@ typedef struct
 #define CLIP_RESIZE 0x10
 #define MAXCLIP_CAPACITY 0x60
 
+typedef enum
+{
+	kInstanceTypeShape,
+	kInstanceTypeImposter
+} InstanceType;
+
+typedef struct InstanceHeader
+{
+	InstanceType type;
+	Point3D center;
+	Matrix3D transform;
+	struct InstanceHeader* next;
+	#if ENABLE_Z_BUFFER
+		int useZBuffer : 1;
+	#endif
+} InstanceHeader;
+
 struct ShapeInstance
 {
+	InstanceHeader header; // (superclass -- must be the first member)
 	Shape3D* prototype; // pointer to original shape
-	Matrix3D transform;
-	struct ShapeInstance* next;
 
 	// cached values from node tree update
 	int nPoints;
@@ -63,13 +80,9 @@ struct ShapeInstance
 	int nClip;
 	int clipCapacity;
 	ClippedFace3D* clip;
-	Point3D center;
 	float colorBias;
 	RenderStyle renderStyle;
 	int inverted : 1; // transformation flipped it across a plane, so we need to reverse backface check
-#if ENABLE_Z_BUFFER
-	int useZBuffer : 1;
-#endif
 #if ENABLE_ORDERING_TABLE
 	int orderTableSize;
 	FaceInstance** orderTable;
@@ -79,14 +92,24 @@ struct ShapeInstance
 typedef struct ShapeInstance ShapeInstance;
 typedef struct Scene3DNode Scene3DNode;
 
+typedef struct ImposterInstance
+{
+	InstanceHeader header; // (superclass -- must be the first member)
+	Imposter3D* prototype;
+	
+	// bounding points
+	Point3D tl;
+	Point3D br;
+} ImposterInstance;
+
 struct Scene3DNode
 {
 	Matrix3D transform;
 	Scene3DNode* parentNode;
 	int nChildren;
 	Scene3DNode** childNodes;
-	int shapeCount;
-	ShapeInstance* shapes;
+	int nInstance;
+	InstanceHeader* instances;
 	float colorBias;
 	RenderStyle renderStyle;
 	int isVisible:1;
@@ -103,6 +126,8 @@ void Scene3DNode_addTransform(Scene3DNode* node, Matrix3D* xform);
 void Scene3DNode_addShape(Scene3DNode* node, Shape3D* shape);
 void Scene3DNode_addShapeWithOffset(Scene3DNode* node, Shape3D* shape, Vector3D offset);
 void Scene3DNode_addShapeWithTransform(Scene3DNode* node, Shape3D* shape, Matrix3D transform);
+void Scene3DNode_addImposter(Scene3DNode* node, Imposter3D* imposter);
+void Scene3DNode_addImposterWithTransform(Scene3DNode* node, Imposter3D* imposter, Matrix3D transform);
 Scene3DNode* Scene3DNode_newChild(Scene3DNode* node);
 void Scene3DNode_setColorBias(Scene3DNode* node, float bias);
 void Scene3DNode_setRenderStyle(Scene3DNode* node, RenderStyle style);
@@ -128,9 +153,9 @@ typedef struct
 	
 	Scene3DNode root;
 	
-	// all shapes from the render tree are added here and z-sorted
-	ShapeInstance** shapelist;
-	int shapelistsize;
+	// all instances from the render tree are added here and z-sorted
+	InstanceHeader** instancelist;
+	int instancelistsize;
 
 #if ENABLE_Z_BUFFER
 	float zmin;

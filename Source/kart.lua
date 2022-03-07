@@ -151,6 +151,8 @@ r = 0
 l = 0
 t = 0
 
+playdate.display.setRefreshRate(20)
+
 function playdate.update()
     
     kart:input()
