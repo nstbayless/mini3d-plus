@@ -18,6 +18,11 @@
 // intersecting geometry in the scene.
 #define ENABLE_ORDERING_TABLE 0
 
+// 0: textures are not permitted
+// 1: textures are permitted, but without transparency
+// 2: textures are permitted with or without transparency
+#define ENABLE_TEXTURES 2
+
 #define FACE_CLIPPING 1
 
 #define CLIP_EPSILON 0.5f

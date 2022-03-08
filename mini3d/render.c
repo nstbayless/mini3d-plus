@@ -6,6 +6,10 @@
 //  Copyright © 2015 Panic, Inc. All rights reserved.
 //
 
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC optimize ("O3")
+#endif
+
 #include <stdint.h>
 #include <string.h>
 #include "render.h"
@@ -34,6 +38,7 @@ void resetZBuffer(float zmin)
 }
 #endif
 
+// swap big-endian / little-endian
 static inline uint32_t swap(uint32_t n)
 {
 #if TARGET_PLAYDATE
@@ -46,38 +51,6 @@ static inline uint32_t swap(uint32_t n)
 	return ((n & 0xff000000) >> 24) | ((n & 0xff0000) >> 8) | ((n & 0xff00) << 8) | (n << 24);
 #endif
 }
-
-/*
-#if ENABLE_Z_BUFFER
-void getZMask(uint8_t* buffer, int rowstride)
-{
-	for ( int y = 0; y < LCD_ROWS; ++y )
-	{
-		uint32_t* row = (uint32_t*)&buffer[y*rowstride];
-		uint16_t* zrow = &zbuf[y*LCD_COLUMNS];
-		uint32_t mask = 0;
-		int x = 0;
-		
-		while ( x < rowstride )
-		{
-			if ( zrow[x] < 0xffff )
-				mask |= 0x80000000 >> (x%32);
-			
-			++x;
-			
-			if ( x%32 == 0 )
-			{
-				*row++ = swap(mask);
-				mask = 0;
-			}
-		}
-		
-		if ( x%32 != 0 )
-			*row++ = swap(mask);
-	}
-}
-#endif
-*/
 
 static inline void
 _drawMaskPattern(uint32_t* p, uint32_t mask, uint32_t color)
@@ -147,49 +120,35 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 	}
 }
 
-#if ENABLE_Z_BUFFER
-static void
-drawFragment_zbuf(uint32_t* row, uint16_t* zbrow, int x, int endx, uint32_t z, int32_t dzdx, uint32_t color)
-{
-	if ( endx < 0 || x >= LCD_COLUMNS )
-		return;
-	
-	if ( x < 0 )
-	{
-		z += -x * dzdx;
-		x = 0;
-	}
-	
-	if ( endx > LCD_COLUMNS )
-		endx = LCD_COLUMNS;
-
-	uint32_t mask = 0;
-	uint32_t* p = row + x/32;
-
-	while ( x < endx )
-	{
-		uint16_t zi = z >> 16;
-		
-		if ( zi > zbrow[x] )
-		{
-			mask |= 0x80000000u >> (x%32);
-			zbrow[x] = zi;
-		}
-		
-		++x;
-		z += dzdx;
-		
-		if ( x % 32 == 0 )
-		{
-			_drawMaskPattern(p++, swap(mask), color);
-			mask = 0;
-		}
-	}
-	
-	if ( x % 32 != 0 )
-		_drawMaskPattern(p, swap(mask), color);
-}
+#if ENABLE_TEXTURES >= 2
+	#define RENDER_T
+	#define RENDER_A
+	#include "render.inc"
 #endif
+
+#if ENABLE_TEXTURES >= 1
+	#define RENDER_T
+	#include "render.inc"
+#endif
+
+#if ENABLE_Z_BUFFER
+	#define RENDER_Z
+	#include "render.inc"
+	
+	#if ENABLE_TEXTURES >= 2
+		#define RENDER_Z
+		#define RENDER_T
+		#define RENDER_A
+		#include "render.inc"
+	#endif
+
+	#if ENABLE_TEXTURES >= 1
+		#define RENDER_Z
+		#define RENDER_T
+		#include "render.inc"
+	#endif
+#endif
+
 
 static inline int32_t slope(float x1, float y1, float x2, float y2)
 {
@@ -250,11 +209,11 @@ drawLine_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, int thic
 		if ( dx < 0 )
 		{
 			z += dzdy;
-			drawFragment_zbuf((uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], x1>>16, (x>>16) + thick, z, dzdx, color);
+			drawFragment_z((uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], x1>>16, (x>>16) + thick, z, dzdx, color);
 		}
 		else
 		{
-			drawFragment_zbuf((uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], x>>16, (x1>>16) + thick, z, dzdx, color);
+			drawFragment_z((uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], x>>16, (x1>>16) + thick, z, dzdx, color);
 			z += dzdy;
 		}
 
@@ -348,50 +307,62 @@ static void fillRange(uint8_t* bitmap, int rowstride, int y, int endy, int32_t* 
 	*x2p = x2;
 }
 
-#if ENABLE_Z_BUFFER
-static void fillRange_zbuf(uint8_t* bitmap, int rowstride, int y, int endy, int32_t* x1p, int32_t dx1, int32_t* x2p, int32_t dx2, uint32_t* zp, int32_t dzdy, int32_t dzdx, uint8_t pattern[8])
+#if ENABLE_TEXTURES
+static inline void sortTri_t(
+	Point3D** p1, Point3D** p2, Point3D** p3,
+	Point2D* t1, Point2D* t2, Point2D* t3
+)
 {
-	int32_t x1 = *x1p, x2 = *x2p;
-	uint32_t z = *zp;
-	int count = 0;
+	float y1 = (*p1)->y, y2 = (*p2)->y, y3 = (*p3)->y;
 	
-	if ( endy < 0 )
+	if ( y1 <= y2 && y1 < y3 )
 	{
-		int dy = endy - y;
-		*x1p = x1 + dy * dx1;
-		*x2p = x2 + dy * dx2;
-		*zp = z + dy * dzdy;
-		return;
+		if ( y3 < y2 ) // 1,3,2
+		{
+			Point3D* tmp = *p2;
+			Point2D tmpt = *t2;
+			*p2 = *p3; *t2 = *t3;
+			*p3 = tmp; *t3 = tmpt;
+		}
 	}
+	else if ( y2 < y1 && y2 < y3 )
+	{
+		Point3D* tmp = *p1;
+		Point2D tmpt = *t1;
+		*p1 = *p2; *t1 = *t2;
 
-	if ( y < 0 )
-	{
-		x1 += -y * dx1;
-		x2 += -y * dx2;
-		z += -y * dzdy;
-		y = 0;
+		if ( y3 < y1 ) // 2,3,1
+		{
+			*p2 = *p3; *t2 = *t3;
+			*p3 = tmp; *t3 = tmpt;
+		}
+		else // 2,1,3
+		{
+			*p2 = tmp; *t2 = tmpt;
+		}
 	}
-
-	while ( y < endy )
+	else
 	{
-		uint8_t p = pattern[y%8];
-		uint32_t color = (p<<24) | (p<<16) | (p<<8) | p;
+		Point3D* tmp = *p1;
+		Point2D tmpt = *t1;
+		*p1 = *p3; *t1 = *t3;
 		
-		drawFragment_zbuf((uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1, z, dzdx, color);
-		
-		x1 += dx1;
-		x2 += dx2;
-		z += dzdy;
-		++y;
+		if ( y1 < y2 ) // 3,1,2
+		{
+			*p3 = *p2; *t3 = *t2;
+			*p2 = tmp; *t2 = tmpt;
+		}
+		else // 3,2,1
+		{
+			*p3 = tmp; *t3 = tmpt;
+		}
 	}
-	
-	*x1p = x1;
-	*x2p = x2;
-	*zp = z;
 }
 #endif
 
-static inline void sortTri(Point3D** p1, Point3D** p2, Point3D** p3)
+static inline void sortTri(
+	Point3D** p1, Point3D** p2, Point3D** p3
+)
 {
 	float y1 = (*p1)->y, y2 = (*p2)->y, y3 = (*p3)->y;
 	
@@ -430,7 +401,6 @@ static inline void sortTri(Point3D** p1, Point3D** p2, Point3D** p3)
 		else // 3,2,1
 			*p3 = tmp;
 	}
-
 }
 
 LCDRowRange fillTriangle(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, uint8_t pattern[8])
@@ -513,7 +483,7 @@ LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point
 	
 	uint32_t z = z1 * (1<<16);
 
-	fillRange_zbuf(bitmap, rowstride, p1->y, MIN(LCD_ROWS, p2->y), &x1, dx1, &x2, dx2, &z, dzdy, dzdx, pattern);
+	fillRange_z(bitmap, rowstride, p1->y, MIN(LCD_ROWS, p2->y), &x1, dx1, &x2, dx2, &z, dzdy, dzdx, pattern);
 	
 	int dx = slope(p2->x, p2->y, p3->x, p3->y);
 
@@ -522,21 +492,114 @@ LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point
 		dzdy = slope(z2, p2->y, z3, p3->y);
 		x1 = p2->x * (1<<16);
 		z = z2 * (1<<16);
-		fillRange_zbuf(bitmap, rowstride, p2->y, endy, &x1, dx, &x2, dx2, &z, dzdy, dzdx, pattern);
+		fillRange_z(bitmap, rowstride, p2->y, endy, &x1, dx, &x2, dx2, &z, dzdy, dzdx, pattern);
 	}
 	else
 	{
 		x2 = p2->x * (1<<16);
-		fillRange_zbuf(bitmap, rowstride, p2->y, endy, &x1, dx1, &x2, dx, &z, dzdy, dzdx, pattern);
+		fillRange_z(bitmap, rowstride, p2->y, endy, &x1, dx1, &x2, dx, &z, dzdy, dzdx, pattern);
 	}
 	
 	return (LCDRowRange){ MAX(0, p1->y), endy };
 }
 #endif
 
+#if ENABLE_Z_BUFFER && ENABLE_TEXTURES
+LCDRowRange fillTriangle_zt(
+	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3,
+	LCDBitmap* texture, Point2D t1, Point2D t2, Point2D t3
+)
+{
+	sortTri_t(&p1, &p2, &p3, &t1, &t2, &t3);
+	int endy = MIN(LCD_ROWS, p3->y);
+	int det = (p3->x - p1->x) * (p2->y - p1->y) - (p2->x - p1->x) * (p3->y - p1->y);
+	if ( p1->y > LCD_ROWS || endy < 0 || det == 0 )
+		return (LCDRowRange){ 0, 0 };
+	
+	// scale points to texture size
+	int width, height;
+	pd->graphics->getBitmapData(texture, &width, &height, NULL, NULL, NULL);
+	t1.x *= width; t1.y *= height;
+	t2.x *= width; t2.y *= height;
+	t3.x *= width; t3.y *= height;
+	
+	int32_t x1 = p1->x * (1<<16);
+	int32_t x2 = x1;
+
+	int32_t sb = slope(p1->x, p1->y, p2->x, p2->y);
+	int32_t sc = slope(p1->x, p1->y, p3->x, p3->y);
+
+	int32_t dx1 = MIN(sb,sc);
+	int32_t dx2 = MAX(sb,sc);
+	
+	float z1 = zscale / (p1->z + Z_BIAS);
+	float z2 = zscale / (p2->z + Z_BIAS);
+	float z3 = zscale / (p3->z + Z_BIAS);
+	float u1 = t1.x;
+	float u2 = t2.x;
+	float u3 = t3.x;
+	float v1 = t1.y;
+	float v2 = t2.y;
+	float v3 = t3.y;
+	
+	float mx = p1->x + (p2->y-p1->y) * (p3->x-p1->x) / (p3->y-p1->y);
+	float mz = z1 + (p2->y-p1->y) * (z3-z1) / (p3->y-p1->y);
+	float mu = u1 + (p2->y-p1->y) * (u3-u1) / (p3->y-p1->y);
+	float mv = v1 + (p2->y-p1->y) * (v3-v1) / (p3->y-p1->y);
+
+	int32_t dzdx, dzdy, dudx, dudy, dvdx, dvdy;
+
+	if ( sc < sb )
+	{
+		dzdx = slope(mz, mx, z2, p2->x);
+		dzdy = slope(z1, p1->y, z3, p3->y);
+		dudx = slope(mu, mx, u2, p2->x);
+		dudy = slope(u1, p1->y, u3, p3->y);
+		dvdx = slope(mv, mx, v2, p2->x);
+		dvdy = slope(v1, p1->y, v3, p3->y);
+	}
+	else
+	{
+		dzdx = slope(z2, p2->x, mz, mx);
+		dzdy = slope(z1, p1->y, z2, p2->y);
+		dudx = slope(u2, p2->x, mu, mx);
+		dudy = slope(u1, p1->y, u2, p2->y);
+		dvdx = slope(v2, p2->x, mv, mx);
+		dvdy = slope(v1, p1->y, v2, p2->y);
+	}
+	
+	uint32_t z = z1 * (1<<16);
+	uint32_t u = u1 * (1<<16);
+	uint32_t v = v1 * (1<<16);
+
+	fillRange_zt(bitmap, rowstride, p1->y, MIN(LCD_ROWS, p2->y), &x1, dx1, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture);
+	
+	int dx = slope(p2->x, p2->y, p3->x, p3->y);
+
+	if ( sb < sc )
+	{
+		dzdy = slope(z2, p2->y, z3, p3->y);
+		dudy = slope(u2, p2->y, u3, p3->y);
+		dvdy = slope(v2, p2->y, v3, p3->y);
+		x1 = p2->x * (1<<16);
+		z = z2 * (1<<16);
+		u = u2 * (1<<16);
+		v = v2 * (1<<16);
+		fillRange_zt(bitmap, rowstride, p2->y, endy, &x1, dx, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture);
+	}
+	else
+	{
+		x2 = p2->x * (1<<16);
+		fillRange_zt(bitmap, rowstride, p2->y, endy, &x1, dx1, &x2, dx, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture);
+	}
+		
+	return (LCDRowRange){ MAX(0, p1->y), endy };
+}
+#endif
+
 LCDRowRange fillQuad(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4, uint8_t pattern[8])
 {
-	// XXX - implement with 3 fillRange_zbuf() calls
+	// XXX - implement with 3 fillrange_z() calls
 	fillTriangle(bitmap, rowstride, p1, p2, p3, pattern);
 	return fillTriangle(bitmap, rowstride, p1, p3, p4, pattern);
 }
@@ -544,11 +607,25 @@ LCDRowRange fillQuad(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, P
 #if ENABLE_Z_BUFFER
 LCDRowRange fillQuad_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4, uint8_t pattern[8])
 {
-	// XXX - implement with 3 fillRange_zbuf() calls
+	// XXX - implement with 3 fillrange_z() calls
 	fillTriangle_zbuf(bitmap, rowstride, p1, p2, p3, pattern);
 	return fillTriangle_zbuf(bitmap, rowstride, p1, p3, p4, pattern);
 }
+#endif
 
+#if ENABLE_Z_BUFFER && ENABLE_TEXTURES
+LCDRowRange fillQuad_zt(
+	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4,
+	LCDBitmap* texture, Point2D t1, Point2D t2, Point2D t3, Point2D t4
+)
+{
+	// XXX - implement with 3 fillrange_z() calls
+	fillTriangle_zt(bitmap, rowstride, p1, p2, p3, texture, t1, t2, t3);
+	return fillTriangle_zt(bitmap, rowstride, p1, p3, p4, texture, t1, t3, t4);
+}
+#endif
+
+#if ENABLE_Z_BUFFER
 #include <stdio.h>
 #include <stdlib.h>
 

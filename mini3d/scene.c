@@ -1130,12 +1130,29 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 	Point3D bl = imposter->br;
 	bl.x = imposter->tl.x;
 	
+	#if ENABLE_TEXTURES
+	Point2D t1, t2, t3, t4;
+	t1.x = 0; t1.y = 0;
+	t2.x = 1; t2.y = 0;
+	t3.x = 1; t3.y = 1;
+	t4.x = 0; t4.y = 1;
+	#endif
+	
 	#if ENABLE_Z_BUFFER
 	if ( imposter->header.useZBuffer )
-		fillQuad_zbuf(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, pattern);
+	{
+		#if ENABLE_TEXTURES
+		if (imposter->prototype->bitmap)
+			fillQuad_zt(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, imposter->prototype->bitmap, t1, t2, t3, t4);
+		else
+		#endif
+			fillQuad_zbuf(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, pattern);
+	}
 	else
 	#endif
+	{
 		fillQuad(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, pattern);
+	}
 }
 
 static int compareZ(const void* a, const void* b)

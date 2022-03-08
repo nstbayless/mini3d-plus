@@ -597,12 +597,37 @@ static int imposter_setRectangle(lua_State* L)
 	return 0;
 }
 
+static int imposter_setBitmap(lua_State* L)
+{
+	Imposter3D* imposter = getImposter(1);
+	LCDBitmap* bitmap;
+	
+	// nil - clear bitmap
+	switch (pd->lua->getArgType(2, NULL))
+	{
+	case kTypeNil:
+		bitmap = NULL;
+		break;
+	case kTypeString:
+		bitmap = pd->graphics->loadBitmap(pd->lua->getArgString(2), NULL);
+		break;
+	default:
+		bitmap = pd->lua->getBitmap(2);
+		bitmap = pd->graphics->copyBitmap(bitmap);
+		break;
+	}
+	
+	Imposter3D_setBitmap(imposter, bitmap);
+	return 0;
+}
+
 static const lua_reg lib3DImposter[] =
 {
 	{ "new",			imposter_new },
 	{ "__gc",			imposter_gc },
 	{ "setPosition",	imposter_setPosition },
 	{ "setRectangle", 	imposter_setRectangle },
+	{ "setBitmap", 		imposter_setBitmap },
 	{ NULL,				NULL }
 };
 

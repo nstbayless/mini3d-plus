@@ -47,6 +47,8 @@ kartshape = lib3d.imposter.new()
 
 kartshape:setPosition(lib3d.point.new(0, 0, 0))
 kartshape:setRectangle(-KSIZE /2, -KSIZE, KSIZE /2, 0)
+kartshape:setBitmap("assets/kart.png")
+
     
 kartNode = n:addChildNode()
 kartNode:addImposter(kartshape)

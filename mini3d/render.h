@@ -24,14 +24,31 @@ LCDRowRange fillTriangle(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p
 LCDRowRange fillQuad(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4, uint8_t pattern[8]);
 
 #if ENABLE_Z_BUFFER
+typedef LCDBitmap LCDBitmap;
+
+// TODO: textured quad without z buffer
+#endif
+
+#if ENABLE_Z_BUFFER
 void resetZBuffer(float zmin);
+// intended for debugging.
+void render_zbuff(uint8_t* out, int rowstride);
 
 LCDRowRange drawLine_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, int thick, uint8_t pattern[8]);
 LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, uint8_t pattern[8]);
 LCDRowRange fillQuad_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4, uint8_t pattern[8]);
+#endif
 
-// intended for debugging.
-void render_zbuff(uint8_t* out, int rowstride);
+#if ENABLE_TEXTURES && ENABLE_Z_BUFFER
+
+LCDRowRange fillTriangle_zt(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3,
+	LCDBitmap* texture, Point2D t1, Point2D t2, Point2D t3
+);
+LCDRowRange fillQuad_zt(
+	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4,
+	LCDBitmap* texture, Point2D t1, Point2D t2, Point2D t3, Point2D t4
+);
+
 #endif
 
 #endif /* render_h */

@@ -1,12 +1,6 @@
 #include "mini3d/3dmath.h"
 #include "mini3d/mini3d.h"
 
-typedef struct Point2D
-{
-    float x;
-    float y;
-} Point2D;
-
 typedef struct Vector2D
 {
     float dx;

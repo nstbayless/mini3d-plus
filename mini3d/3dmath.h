@@ -40,6 +40,12 @@ typedef struct
 	float z;
 } Point3D;
 
+typedef struct Point2D
+{
+    float x;
+    float y;
+} Point2D;
+
 static inline Point3D Point3DMake(float x, float y, float z)
 {
 	return (Point3D){ .x = x, .y = y, .z = z };
