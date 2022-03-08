@@ -11,6 +11,7 @@
 #include "render.h"
 #include "mini3d.h"
 #include "shape.h"
+#include "imposter.h"
 #include "scene.h"
 #include "collision.h"
 
@@ -19,6 +20,7 @@ PlaydateAPI* pd = NULL;
 static const lua_reg lib3DScene[];
 static const lua_reg lib3DNode[];
 static const lua_reg lib3DShape[];
+static const lua_reg lib3DImposter[];
 static const lua_reg lib3DPoint[];
 static const lua_reg lib3DMatrix[];
 static const lua_reg lib3DMath[];
@@ -36,6 +38,9 @@ void register3D(PlaydateAPI* playdate)
 		pd->system->logToConsole("%s:%i: registerClass failed, %s", __FILE__, __LINE__, err);
 
 	if ( !pd->lua->registerClass("lib3d.shape", lib3DShape, NULL, 0, &err) )
+		pd->system->logToConsole("%s:%i: registerClass failed, %s", __FILE__, __LINE__, err);
+		
+	if ( !pd->lua->registerClass("lib3d.imposter", lib3DImposter, NULL, 0, &err) )
 		pd->system->logToConsole("%s:%i: registerClass failed, %s", __FILE__, __LINE__, err);
 
 	if ( !pd->lua->registerClass("lib3d.point", lib3DPoint, NULL, 0, &err) )
@@ -63,6 +68,7 @@ static void* get3DObj(int n, char* type)
 static Scene3D* getScene(int n)			{ return get3DObj(n, "lib3d.scene"); }
 static Scene3DNode* getSceneNode(int n)	{ return get3DObj(n, "lib3d.scenenode"); }
 static Shape3D* getShape(int n)			{ return get3DObj(n, "lib3d.shape"); }
+static Imposter3D* getImposter(int n)	{ return get3DObj(n, "lib3d.imposter"); }
 static Point3D* getPoint(int n)			{ return get3DObj(n, "lib3d.point"); }
 static Vector3D* getVector(int n)	    { return get3DObj(n, "lib3d.point"); }
 static Matrix3D* getMatrix(int n)		{ return get3DObj(n, "lib3d.matrix"); }
@@ -252,6 +258,20 @@ static int node_addShape(lua_State* L)
 	return 0;
 }
 
+static int node_addImposter(lua_State* L)
+{
+	Scene3DNode* node = getSceneNode(1);
+	Imposter3D* imposter = getImposter(2);
+	Matrix3D* m = pd->lua->getArgObject(3, "lib3d.matrix", NULL);
+	if ( m != NULL )
+		Scene3DNode_addImposterWithTransform(node, imposter, *m);
+	// TODO: Scene3DNode_addImposterWithOffset
+	else
+		Scene3DNode_addImposter(node, imposter);
+		
+	return 0;
+}
+
 static int node_makeChildNode(lua_State* L)
 {
 	Scene3DNode* node = getSceneNode(1);
@@ -417,6 +437,7 @@ static const lua_reg lib3DNode[] =
 	{ "__gc",			node_gc },
 	{ "addChildNode",	node_makeChildNode },
 	{ "addShape",		node_addShape },
+	{ "addImposter",	node_addImposter },
 	{ "addTransform",	node_addTransform },
 	{ "setTransform",	node_setTransform },
 	{ "translateBy",	node_translateBy },
@@ -534,6 +555,54 @@ static const lua_reg lib3DShape[] =
 #if ENABLE_ORDERING_TABLE
 	{ "setOrderTableSize", shape_setOrderTableSize, },
 #endif
+	{ NULL,				NULL }
+};
+
+/// Imposter
+
+static int imposter_new(lua_State* L)
+{
+	Imposter3D* imposter = m3d_malloc(sizeof(Imposter3D));
+	Imposter3D_init(imposter);
+	Imposter3D_retain(imposter);
+	pd->lua->pushObject(imposter, "lib3d.imposter", 0);
+	return 1;
+}
+
+static int imposter_gc(lua_State* L)
+{
+	Imposter3D* imposter = getImposter(1);
+	Imposter3D_release(imposter);
+	return 0;
+}
+
+static int imposter_setPosition(lua_State* L)
+{
+	Imposter3D* imposter = getImposter(1);
+	Point3D* point = getPoint(2);
+	Imposter3D_setPosition(imposter, point);
+	
+	return 0;
+}
+
+static int imposter_setRectangle(lua_State* L)
+{
+	Imposter3D* imposter = getImposter(1);
+	float x1 = pd->lua->getArgFloat(2);
+	float y1 = pd->lua->getArgFloat(3);
+	float x2 = pd->lua->getArgFloat(4);
+	float y2 = pd->lua->getArgFloat(5);
+	
+	Imposter3D_setRectangle(imposter, x1, y1, x2, y2);
+	return 0;
+}
+
+static const lua_reg lib3DImposter[] =
+{
+	{ "new",			imposter_new },
+	{ "__gc",			imposter_gc },
+	{ "setPosition",	imposter_setPosition },
+	{ "setRectangle", 	imposter_setRectangle },
 	{ NULL,				NULL }
 };
 

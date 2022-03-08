@@ -43,15 +43,13 @@ end
 n2:addShape(terrain)
     
 local KSIZE = 2
-kartshape = lib3d.shape.new()
+kartshape = lib3d.imposter.new()
 
-kartshape:addFace(lib3d.point.new(-KSIZE/2,0,0),
-    lib3d.point.new(KSIZE/2,0,0),
-    lib3d.point.new(KSIZE/2,0,KSIZE),
-    lib3d.point.new(-KSIZE/2,0,KSIZE), -0.1)
+kartshape:setPosition(lib3d.point.new(0, 0, 0))
+kartshape:setRectangle(-KSIZE /2, -KSIZE, KSIZE /2, 0)
     
 kartNode = n:addChildNode()
-kartNode:addShape(kartshape)
+kartNode:addImposter(kartshape)
 
 local gfx = playdate.graphics
 

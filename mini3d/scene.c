@@ -1118,12 +1118,17 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 	// FIXME: this function is just a temporary implementation
 	// pay no attention.
 	// destroy and rewrite from scratch.
-	uint8_t* pattern = (uint8_t*)&patterns[32];
+	uint8_t* pattern = (uint8_t*)&patterns[25];
+	
+	if (imposter->header.center.z <= CLIP_EPSILON / 2)
+	{
+		return;
+	}
 	
 	Point3D tr = imposter->tl;
 	tr.x = imposter->br.x;
 	Point3D bl = imposter->br;
-	tr.x = imposter->tl.x;
+	bl.x = imposter->tl.x;
 	
 	#if ENABLE_Z_BUFFER
 	if ( imposter->header.useZBuffer )

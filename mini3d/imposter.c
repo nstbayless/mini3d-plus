@@ -34,3 +34,16 @@ void Imposter3D_release(Imposter3D* imposter)
 	
 	m3d_free(imposter);
 }
+
+void Imposter3D_setPosition(Imposter3D* imposter, Point3D* position)
+{
+	imposter->center = *position;
+}
+
+void Imposter3D_setRectangle(Imposter3D* imposter, float x1, float y1, float x2, float y2)
+{
+	imposter->x1 = x1;
+	imposter->y1 = y1;
+	imposter->x2 = x2;
+	imposter->y2 = y2;
+}

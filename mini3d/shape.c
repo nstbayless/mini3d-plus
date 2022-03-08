@@ -50,6 +50,7 @@ int Shape3D_addPoint(Shape3D* shape, Point3D* p)
 {
 	int i;
 	
+	// check if this point is already there -- return that index instead.
 	for ( i = 0; i < shape->nPoints; ++i )
 	{
 		if ( Point3D_equals(*p, shape->points[i]) )
