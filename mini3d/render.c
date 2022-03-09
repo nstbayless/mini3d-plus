@@ -535,17 +535,31 @@ LCDRowRange fillTriangle_zt(
 	float z1 = zscale / (p1->z + Z_BIAS);
 	float z2 = zscale / (p2->z + Z_BIAS);
 	float z3 = zscale / (p3->z + Z_BIAS);
-	float u1 = t1.x;
-	float u2 = t2.x;
-	float u3 = t3.x;
-	float v1 = t1.y;
-	float v2 = t2.y;
-	float v3 = t3.y;
+	
+	#if ENABLE_TEXTURES_PROJECTIVE
+	float w1 = 1 / p1->z;
+	float w2 = 1 / p2->z;
+	float w3 = 1 / p3->z;
+	#else
+	const float w1 = 1;
+	const float w2 = 1;
+	const float w3 = 1;
+	#endif
+	float u1 = t1.x * w1;
+	float v1 = t1.y * w1;
+	float u2 = t2.x * w2;
+	float v2 = t2.y * w2;
+	float u3 = t3.x * w3;
+	float v3 = t3.y * w3;
 	
 	float mx = p1->x + (p2->y-p1->y) * (p3->x-p1->x) / (p3->y-p1->y);
 	float mz = z1 + (p2->y-p1->y) * (z3-z1) / (p3->y-p1->y);
 	float mu = u1 + (p2->y-p1->y) * (u3-u1) / (p3->y-p1->y);
 	float mv = v1 + (p2->y-p1->y) * (v3-v1) / (p3->y-p1->y);
+	#if ENABLE_TEXTURES_PROJECTIVE
+	float mw = w1 + (p2->y-p1->y) * (w3-w1) / (p3->y-p1->y);
+	int32_t dwdx, dwdy;
+	#endif
 
 	int32_t dzdx, dzdy, dudx, dudy, dvdx, dvdy;
 
@@ -557,6 +571,10 @@ LCDRowRange fillTriangle_zt(
 		dudy = slope(u1, p1->y, u3, p3->y);
 		dvdx = slope(mv, mx, v2, p2->x);
 		dvdy = slope(v1, p1->y, v3, p3->y);
+		#if ENABLE_TEXTURES_PROJECTIVE
+		dwdx = slope(mw, mx, w2, p2->x);
+		dwdy = slope(w1, p1->y, w3, p3->y);
+		#endif
 	}
 	else
 	{
@@ -566,13 +584,25 @@ LCDRowRange fillTriangle_zt(
 		dudy = slope(u1, p1->y, u2, p2->y);
 		dvdx = slope(v2, p2->x, mv, mx);
 		dvdy = slope(v1, p1->y, v2, p2->y);
+		#if ENABLE_TEXTURES_PROJECTIVE
+		dwdx = slope(w2, p2->x, mw, mx);
+		dwdy = slope(w1, p1->y, w2, p2->y);
+		#endif
 	}
 	
 	uint32_t z = z1 * (1<<16);
 	uint32_t u = u1 * (1<<16);
 	uint32_t v = v1 * (1<<16);
+	#if ENABLE_TEXTURES_PROJECTIVE
+	uint32_t w = w1 * (1<<16);
+	#endif
 
-	fillRange_zt(bitmap, rowstride, p1->y, MIN(LCD_ROWS, p2->y), &x1, dx1, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture);
+	fillRange_zt(
+		bitmap, rowstride, p1->y, MIN(LCD_ROWS, p2->y), &x1, dx1, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
+		#if ENABLE_TEXTURES_PROJECTIVE
+			, &w, dwdy, dwdx
+		#endif
+	);
 	
 	int dx = slope(p2->x, p2->y, p3->x, p3->y);
 
@@ -585,12 +615,26 @@ LCDRowRange fillTriangle_zt(
 		z = z2 * (1<<16);
 		u = u2 * (1<<16);
 		v = v2 * (1<<16);
-		fillRange_zt(bitmap, rowstride, p2->y, endy, &x1, dx, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture);
+		#if ENABLE_TEXTURES_PROJECTIVE
+		dwdy = slope(w2, p2->y, w3, p3->y);
+		w = w2 * (1 << 16);
+		#endif
+		fillRange_zt(
+			bitmap, rowstride, p2->y, endy, &x1, dx, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
+		#if ENABLE_TEXTURES_PROJECTIVE
+			, &w, dwdy, dwdx
+		#endif
+		);
 	}
 	else
 	{
 		x2 = p2->x * (1<<16);
-		fillRange_zt(bitmap, rowstride, p2->y, endy, &x1, dx1, &x2, dx, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture);
+		fillRange_zt(
+			bitmap, rowstride, p2->y, endy, &x1, dx1, &x2, dx, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
+			#if ENABLE_TEXTURES_PROJECTIVE
+				, &w, dwdy, dwdx
+			#endif
+		);
 	}
 		
 	return (LCDRowRange){ MAX(0, p1->y), endy };

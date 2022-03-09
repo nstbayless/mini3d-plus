@@ -23,26 +23,21 @@
     #define SYM_ZTA SYM_ZT
 #endif
 
-// 1 if either RENDER_Z or projective textures
-// means we need to track a Z coordinate
-#if (defined(RENDER_Z) || (ENABLE_TEXTURES && ENABLE_TEXTURES_PROJECTIVE))
-    #define HOMOGEN_Z 1
-#else
-    #define HOMOGEN_Z 0
-#endif
-
 #define SYM(x) GLUE(x, SYM_ZTA)
 
 static void
 SYM(drawFragment)(
 	uint32_t* row, uint16_t* zbrow, int x, int endx
-#if HOMOGEN_Z
+#ifdef RENDER_Z
 	, uint32_t z, int32_t dzdx
 #endif
 #ifdef RENDER_T
 	, uint32_t u, int32_t dudx,
 	uint32_t v, int32_t dvdx,
 	uint8_t* texdata, uint16_t texrowbytes, uint16_t texw, uint16_t texh
+#if ENABLE_TEXTURES_PROJECTIVE
+    , uint32_t w, uint32_t dwdx
+#endif
 #else
     , uint32_t color
 #endif
@@ -56,13 +51,16 @@ SYM(drawFragment)(
 	
 	if ( x < 0 )
 	{
-        #if HOMOGEN_Z
+        #ifdef RENDER_Z
 		z += -x * dzdx;
         #endif
         
         #ifdef RENDER_T
-		u += -x * dudx;
-		v += -x * dvdx;
+            u += -x * dudx;
+            v += -x * dvdx;
+            #if ENABLE_TEXTURES_PROJECTIVE
+                w += -x * dwdx;
+            #endif
         #endif
         
 		x = 0;
@@ -81,8 +79,13 @@ SYM(drawFragment)(
 	{
 		// read texture
         #ifdef RENDER_T
+        #if ENABLE_TEXTURES_PROJECTIVE
+        uint16_t ui = (u / (w|1)) % texw;
+		uint16_t vi = (v / (w|1)) % texh;
+        #else
 		uint16_t ui = (u >> 16) % texw;
 		uint16_t vi = (v >> 16) % texh;
+        #endif
 		uint16_t ti = (vi * texrowbytes) + ui / 8;
 		uint32_t texpix = (texdata[ti] << (ui % 8)) & 0x80; // either 0x80 or 0.
         #endif
@@ -112,13 +115,16 @@ SYM(drawFragment)(
 		
 		++x;
         
-        #if HOMOGEN_Z
+        #ifdef RENDER_Z
 		z += dzdx;
         #endif
         
         #ifdef RENDER_T
-		u += dudx;
-		v += dvdx;
+            u += dudx;
+            v += dvdx;
+            #if ENABLE_TEXTURES_PROJECTIVE
+                w += dwdx;
+            #endif
         #endif
 		
 		// TODO: consider using Duff's Device to avoid this branch?
@@ -159,38 +165,48 @@ SYM(drawFragment)(
 static void 
 SYM(fillRange)(
 	uint8_t* bitmap, int rowstride, int y, int endy, int32_t* x1p, int32_t dx1, int32_t* x2p, int32_t dx2
-#ifdef HOMOGEN_Z
+#ifdef RENDER_Z
 	, uint32_t* zp, int32_t dzdy, int32_t dzdx
 #endif
 #ifdef RENDER_T
 	, uint32_t* up, int32_t dudy, int32_t dudx,
 	uint32_t* vp, int32_t dvdy, int32_t dvdx,
 	LCDBitmap* texture
+    #if ENABLE_TEXTURES_PROJECTIVE
+    , uint32_t* wp, int32_t dwdy, int32_t dwdx
+    #endif
 #else
     , uint8_t pattern[8]
 #endif
 )
 {
 	int32_t x1 = *x1p, x2 = *x2p;
-    #ifdef HOMOGEN_Z
-	uint32_t z = *zp;
+    #ifdef RENDER_Z
+	    uint32_t z = *zp;
     #endif
     #ifdef RENDER_T
-    uint32_t u = *up, v = *vp;
+        uint32_t u = *up, v = *vp;
+        #if ENABLE_TEXTURES_PROJECTIVE
+            uint32_t w = *wp;
+        #endif
     #endif
 	int count = 0;
 	
 	if ( endy < 0 )
+    // early-out
 	{
 		int dy = endy - y;
 		*x1p = x1 + dy * dx1;
 		*x2p = x2 + dy * dx2;
-        #ifdef HOMOGEN_Z
+        #ifdef RENDER_Z
 		*zp = z + dy * dzdy;
         #endif
         #ifdef RENDER_T
-		*up = u + dy * dudy;
-		*vp = v + dy * dvdy;
+            *up = u + dy * dudy;
+            *vp = v + dy * dvdy;
+            #if ENABLE_TEXTURES_PROJECTIVE
+                *wp = w + dy * dwdy;
+            #endif
         #endif
 		return;
 	}
@@ -199,25 +215,28 @@ SYM(fillRange)(
 	{
 		x1 += -y * dx1;
 		x2 += -y * dx2;
-        #ifdef HOMOGEN_Z
+        #ifdef RENDER_Z
 		z += -y * dzdy;
         #endif
         #ifdef RENDER_T
-		u += -y * dudy;
-		v += -v * dvdy;
+		    u += -y * dudy;
+    		v += -v * dvdy;
+            #if ENABLE_TEXTURES_PROJECTIVE
+                w += -y * dwdy;
+            #endif
         #endif
 		y = 0;
 	}
     
     #ifdef RENDER_T
-    // read texture bitmap
-	uint8_t* bmdata;
-	uint8_t* maskdata;
-	int width, height;
-	int rowbytes;
-	int hasmask;
-	pd->graphics->getBitmapData(texture, &width, &height, &rowbytes, &hasmask, &bmdata);
-    
+        // read texture bitmap
+        uint8_t* bmdata;
+        uint8_t* maskdata;
+        int width, height;
+        int rowbytes;
+        int hasmask;
+        pd->graphics->getBitmapData(texture, &width, &height, &rowbytes, &hasmask, &bmdata);
+        
         #if ENABLE_TEXTURES >= 2
         if (hasmask)
         {
@@ -238,6 +257,9 @@ SYM(fillRange)(
                 z, dzdx,
                 u, dudx, v, dvdx,
                 bmdata, rowbytes, width, height
+                #if ENABLE_TEXTURES_PROJECTIVE
+                    , w, dwdx
+                #endif
             );
         #elif defined(RENDER_T) && !defined(RENDER_Z)
             #if ENABLE_TEXTURES >= 2
@@ -246,11 +268,11 @@ SYM(fillRange)(
             drawFragment_t(
             #endif
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
-                #if HOMOGEN_Z
-                z, dzdx,
-                #endif
                 u, dudx, v, dvdx,
                 bmdata, rowbytes, width, height
+                #if ENABLE_TEXTURES_PROJECTIVE
+                    , w, dwdx
+                #endif
             );
         #elif defined(RENDER_Z) && !defined(RENDER_T)
             // no texture
@@ -264,24 +286,30 @@ SYM(fillRange)(
 		
 		x1 += dx1;
 		x2 += dx2;
-        #if HOMOGEN_Z
+        #ifdef RENDER_Z
 		z += dzdy;
         #endif
         #ifdef RENDER_T
 		u += dudy;
 		v += dvdy;
+        #if ENABLE_TEXTURES_PROJECTIVE
+            w += dwdy;
+        #endif
         #endif
 		++y;
 	}
 	
 	*x1p = x1;
 	*x2p = x2;
-    #ifdef HOMOGEN_Z
+    #ifdef RENDER_Z
 	*zp = z;
     #endif
     #ifdef RENDER_T
 	*up = u;
 	*vp = v;
+    #if ENABLE_TEXTURES_PROJECTIVE
+        *wp = w;
+    #endif
     #endif
 }
 #endif
@@ -292,7 +320,7 @@ SYM(fillRange)(
 #undef SYM_ZTA
 #undef _GLUE
 #undef GLUE
-#undef HOMOGEN_Z
+#undef RENDER_Z
 
 #ifdef RENDER_Z
     #undef RENDER_Z
