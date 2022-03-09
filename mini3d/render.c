@@ -25,6 +25,18 @@
 #define MAX(a, b) (((a)>(b))?(a):(b))
 #endif
 
+#if ENABLE_TEXTURES_PROJECTIVE
+	typedef int32_t uvw_int_t;
+	typedef int64_t uvw_int2_t;
+	#define UVW_SHIFT 28
+	#define UVW_SLOPE slope64
+#else
+	typedef int16_t uvw_int_t;
+	typedef int32_t uvw_int2_t;
+	#define UVW_SHIFT 16
+	#define UVW_SLOPE slope
+#endif
+
 #if ENABLE_Z_BUFFER
 static uint16_t zbuf[LCD_COLUMNS*LCD_ROWS];
 static float zscale;
@@ -159,6 +171,17 @@ static inline int32_t slope(float x1, float y1, float x2, float y2)
 		return dx * (1<<16);
 	else
 		return dx / dy * (1<<16);
+}
+
+static inline int64_t slope64(float x1, float y1, float x2, float y2)
+{
+	float dx = x2-x1;
+	float dy = y2-y1;
+	
+	if ( dy < 1 )
+		return dx * ((int64_t)(1)<<28);
+	else
+		return dx / dy * ((int64_t)(1)<<28);
 }
 
 #if ENABLE_Z_BUFFER
@@ -558,43 +581,44 @@ LCDRowRange fillTriangle_zt(
 	float mv = v1 + (p2->y-p1->y) * (v3-v1) / (p3->y-p1->y);
 	#if ENABLE_TEXTURES_PROJECTIVE
 	float mw = w1 + (p2->y-p1->y) * (w3-w1) / (p3->y-p1->y);
-	int32_t dwdx, dwdy;
+	uvw_int2_t dwdx, dwdy;
 	#endif
 
-	int32_t dzdx, dzdy, dudx, dudy, dvdx, dvdy;
+	int32_t dzdx, dzdy;
+	uvw_int2_t dudx, dudy, dvdx, dvdy;
 
 	if ( sc < sb )
 	{
 		dzdx = slope(mz, mx, z2, p2->x);
 		dzdy = slope(z1, p1->y, z3, p3->y);
-		dudx = slope(mu, mx, u2, p2->x);
-		dudy = slope(u1, p1->y, u3, p3->y);
-		dvdx = slope(mv, mx, v2, p2->x);
-		dvdy = slope(v1, p1->y, v3, p3->y);
+		dudx = UVW_SLOPE(mu, mx, u2, p2->x);
+		dudy = UVW_SLOPE(u1, p1->y, u3, p3->y);
+		dvdx = UVW_SLOPE(mv, mx, v2, p2->x);
+		dvdy = UVW_SLOPE(v1, p1->y, v3, p3->y);
 		#if ENABLE_TEXTURES_PROJECTIVE
-		dwdx = slope(mw, mx, w2, p2->x);
-		dwdy = slope(w1, p1->y, w3, p3->y);
+		dwdx = UVW_SLOPE(mw, mx, w2, p2->x);
+		dwdy = UVW_SLOPE(w1, p1->y, w3, p3->y);
 		#endif
 	}
 	else
 	{
 		dzdx = slope(z2, p2->x, mz, mx);
 		dzdy = slope(z1, p1->y, z2, p2->y);
-		dudx = slope(u2, p2->x, mu, mx);
-		dudy = slope(u1, p1->y, u2, p2->y);
-		dvdx = slope(v2, p2->x, mv, mx);
-		dvdy = slope(v1, p1->y, v2, p2->y);
+		dudx = UVW_SLOPE(u2, p2->x, mu, mx);
+		dudy = UVW_SLOPE(u1, p1->y, u2, p2->y);
+		dvdx = UVW_SLOPE(v2, p2->x, mv, mx);
+		dvdy = UVW_SLOPE(v1, p1->y, v2, p2->y);
 		#if ENABLE_TEXTURES_PROJECTIVE
-		dwdx = slope(w2, p2->x, mw, mx);
-		dwdy = slope(w1, p1->y, w2, p2->y);
+		dwdx = UVW_SLOPE(w2, p2->x, mw, mx);
+		dwdy = UVW_SLOPE(w1, p1->y, w2, p2->y);
 		#endif
 	}
 	
 	uint32_t z = z1 * (1<<16);
-	uint32_t u = u1 * (1<<16);
-	uint32_t v = v1 * (1<<16);
+	uvw_int2_t u = u1 * ((uvw_int2_t)(1)<<UVW_SHIFT);
+	uvw_int2_t v = v1 * ((uvw_int2_t)(1)<<UVW_SHIFT);
 	#if ENABLE_TEXTURES_PROJECTIVE
-	uint32_t w = w1 * (1<<16);
+	uvw_int2_t w = w1 * ((uvw_int2_t)(1)<<UVW_SHIFT);
 	#endif
 
 	fillRange_zt(
@@ -609,15 +633,15 @@ LCDRowRange fillTriangle_zt(
 	if ( sb < sc )
 	{
 		dzdy = slope(z2, p2->y, z3, p3->y);
-		dudy = slope(u2, p2->y, u3, p3->y);
-		dvdy = slope(v2, p2->y, v3, p3->y);
+		dudy = UVW_SLOPE(u2, p2->y, u3, p3->y);
+		dvdy = UVW_SLOPE(v2, p2->y, v3, p3->y);
 		x1 = p2->x * (1<<16);
 		z = z2 * (1<<16);
-		u = u2 * (1<<16);
-		v = v2 * (1<<16);
+		u = u2 * ((uvw_int2_t)(1)<<UVW_SHIFT);
+		v = v2 * ((uvw_int2_t)(1)<<UVW_SHIFT);
 		#if ENABLE_TEXTURES_PROJECTIVE
-		dwdy = slope(w2, p2->y, w3, p3->y);
-		w = w2 * (1 << 16);
+		dwdy = UVW_SLOPE(w2, p2->y, w3, p3->y);
+		w = w2 * ((uvw_int2_t)(1)<<UVW_SHIFT);
 		#endif
 		fillRange_zt(
 			bitmap, rowstride, p2->y, endy, &x1, dx, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture

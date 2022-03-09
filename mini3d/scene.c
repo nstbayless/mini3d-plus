@@ -318,7 +318,7 @@ static void calculateClipping_straddle12(
 		clip->tex.t1 = *ta;
 		interpolatePoint2D(&clip->tex.t2, ta, tb1, pab1);
 		interpolatePoint2D(&clip->tex.t3, ta, tb2, pab2);
-		clip->tex.texture_enabled = 0;
+		clip->tex.texture_enabled = 1;
 	}
 	else
 	{

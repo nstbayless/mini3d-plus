@@ -31,7 +31,7 @@
 
 #define FACE_CLIPPING 1
 
-#define CLIP_EPSILON 10.0f
+#define CLIP_EPSILON 1.5f
 
 #include <stddef.h>
 

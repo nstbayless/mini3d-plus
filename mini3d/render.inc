@@ -32,11 +32,11 @@ SYM(drawFragment)(
 	, uint32_t z, int32_t dzdx
 #endif
 #ifdef RENDER_T
-	, uint32_t u, int32_t dudx,
-	uint32_t v, int32_t dvdx,
+	, uvw_int2_t u, uvw_int2_t dudx,
+	uvw_int2_t v, uvw_int2_t dvdx,
 	uint8_t* texdata, uint16_t texrowbytes, uint16_t texw, uint16_t texh
 #if ENABLE_TEXTURES_PROJECTIVE
-    , uint32_t w, uint32_t dwdx
+    , uvw_int2_t w, uvw_int2_t dwdx
 #endif
 #else
     , uint32_t color
@@ -80,11 +80,12 @@ SYM(drawFragment)(
 		// read texture
         #ifdef RENDER_T
         #if ENABLE_TEXTURES_PROJECTIVE
+        // |1 to prevent floating point division error
         uint16_t ui = (u / (w|1)) % texw;
 		uint16_t vi = (v / (w|1)) % texh;
         #else
-		uint16_t ui = (u >> 16) % texw;
-		uint16_t vi = (v >> 16) % texh;
+		uint16_t ui = (u >> UVW_SHIFT) % texw;
+		uint16_t vi = (v >> UVW_SHIFT) % texh;
         #endif
 		uint16_t ti = (vi * texrowbytes) + ui / 8;
 		uint32_t texpix = (texdata[ti] << (ui % 8)) & 0x80; // either 0x80 or 0.
@@ -169,11 +170,11 @@ SYM(fillRange)(
 	, uint32_t* zp, int32_t dzdy, int32_t dzdx
 #endif
 #ifdef RENDER_T
-	, uint32_t* up, int32_t dudy, int32_t dudx,
-	uint32_t* vp, int32_t dvdy, int32_t dvdx,
+	, uvw_int2_t* up, uvw_int2_t dudy, uvw_int2_t dudx,
+	uvw_int2_t* vp, uvw_int2_t dvdy, uvw_int2_t dvdx,
 	LCDBitmap* texture
     #if ENABLE_TEXTURES_PROJECTIVE
-    , uint32_t* wp, int32_t dwdy, int32_t dwdx
+    , uvw_int2_t* wp, uvw_int2_t dwdy, uvw_int2_t dwdx
     #endif
 #else
     , uint8_t pattern[8]
@@ -185,9 +186,9 @@ SYM(fillRange)(
 	    uint32_t z = *zp;
     #endif
     #ifdef RENDER_T
-        uint32_t u = *up, v = *vp;
+        uvw_int2_t u = *up, v = *vp;
         #if ENABLE_TEXTURES_PROJECTIVE
-            uint32_t w = *wp;
+            uvw_int2_t w = *wp;
         #endif
     #endif
 	int count = 0;
@@ -220,7 +221,7 @@ SYM(fillRange)(
         #endif
         #ifdef RENDER_T
 		    u += -y * dudy;
-    		v += -v * dvdy;
+    		v += -y * dvdy;
             #if ENABLE_TEXTURES_PROJECTIVE
                 w += -y * dwdy;
             #endif
