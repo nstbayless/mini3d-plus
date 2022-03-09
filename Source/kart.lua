@@ -49,7 +49,7 @@ if j then
 end
 
 n2:addShape(terrain)
-    
+
 local KSIZE = 2
 kartshape = lib3d.imposter.new()
 
