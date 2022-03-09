@@ -18,10 +18,10 @@
 // intersecting geometry in the scene.
 #define ENABLE_ORDERING_TABLE 0
 
-// 0: textures are not permitted
-// 1: textures are permitted, but without transparency
-// 2: textures are permitted with or without transparency
-#define ENABLE_TEXTURES 2
+#define ENABLE_TEXTURES 1
+
+// allow textures to have non-opaque pixels
+#define ENABLE_TEXTURES_MASK 1
 
 // ignored if textures are disabled
 // if 1, textures are mapped with homogenous coordinates.
@@ -31,7 +31,7 @@
 
 #define FACE_CLIPPING 1
 
-#define CLIP_EPSILON 1.5f
+#define CLIP_EPSILON 1.3f
 
 #include <stddef.h>
 

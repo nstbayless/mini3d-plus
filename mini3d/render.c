@@ -132,7 +132,7 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 	}
 }
 
-#if ENABLE_TEXTURES >= 2
+#if ENABLE_TEXTURES_MASK
 	#define RENDER_T
 	#define RENDER_A
 	#include "render.inc"
@@ -147,14 +147,14 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 	#define RENDER_Z
 	#include "render.inc"
 	
-	#if ENABLE_TEXTURES >= 2
+	#if ENABLE_TEXTURES_MASK
 		#define RENDER_Z
 		#define RENDER_T
 		#define RENDER_A
 		#include "render.inc"
 	#endif
 
-	#if ENABLE_TEXTURES >= 1
+	#if ENABLE_TEXTURES
 		#define RENDER_Z
 		#define RENDER_T
 		#include "render.inc"

@@ -238,7 +238,7 @@ SYM(fillRange)(
         int hasmask;
         pd->graphics->getBitmapData(texture, &width, &height, &rowbytes, &hasmask, &bmdata);
         
-        #if ENABLE_TEXTURES >= 2
+        #if ENABLE_TEXTURES_MASK
         if (hasmask)
         {
             maskdata = bmdata + height * rowbytes;
@@ -249,7 +249,7 @@ SYM(fillRange)(
 	while ( y < endy )
 	{	
         #if defined(RENDER_T) && defined(RENDER_Z)
-            #if ENABLE_TEXTURES >= 2
+            #if ENABLE_TEXTURES_MASK
             (hasmask ? drawFragment_zta : drawFragment_zt)(
             #else
             drawFragment_zt(
@@ -263,7 +263,7 @@ SYM(fillRange)(
                 #endif
             );
         #elif defined(RENDER_T) && !defined(RENDER_Z)
-            #if ENABLE_TEXTURES >= 2
+            #if ENABLE_TEXTURES_MASK
             (hasmask ? drawFragment_ta : drawFragment_t)(
             #else
             drawFragment_t(
