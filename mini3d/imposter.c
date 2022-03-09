@@ -19,7 +19,9 @@ void Imposter3D_init(Imposter3D* imposter)
 	imposter->x2 = 1;
 	imposter->y1 = -1;
 	imposter->y2 = 1;
+	#if ENABLE_TEXTURES
 	imposter->bitmap = NULL;
+	#endif
 }
 
 Imposter3D* Imposter3D_retain(Imposter3D* imposter)
@@ -35,10 +37,10 @@ void Imposter3D_release(Imposter3D* imposter)
 	
 	m3d_free(imposter);
 	
+	#if ENABLE_TEXTURES
 	if (imposter->bitmap)
-	{
 		pd->graphics->freeBitmap(imposter->bitmap);
-	}
+	#endif
 }
 
 void Imposter3D_setPosition(Imposter3D* imposter, Point3D* position)
@@ -54,6 +56,7 @@ void Imposter3D_setRectangle(Imposter3D* imposter, float x1, float y1, float x2,
 	imposter->y2 = y2;
 }
 
+#if ENABLE_TEXTURES
 void Imposter3D_setBitmap(Imposter3D* imposter, LCDBitmap* bitmap)
 {
 	if (imposter->bitmap)
@@ -62,3 +65,4 @@ void Imposter3D_setBitmap(Imposter3D* imposter, LCDBitmap* bitmap)
 	}
 	imposter->bitmap = bitmap;
 }
+#endif

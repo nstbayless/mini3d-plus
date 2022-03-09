@@ -16,6 +16,10 @@ void Shape3D_init(Shape3D* shape)
 	shape->points = NULL;
 	shape->nFaces = 0;
 	shape->faces = NULL;
+#if ENABLE_TEXTURES
+	shape->texture = NULL;
+	shape->texmap = NULL;
+#endif
 	shape->center.x = 0;
 	shape->center.y = 0;
 	shape->center.z = 0;
@@ -42,6 +46,14 @@ void Shape3D_release(Shape3D* shape)
 	
 	if ( shape->faces != NULL )
 		m3d_free(shape->faces);
+		
+	#if ENABLE_TEXTURES
+	if ( shape->texture != NULL )
+		pd->graphics->freeBitmap(shape->texture);
+
+	if ( shape->texmap != NULL )
+		m3d_free(shape->texmap);
+	#endif
 	
 	m3d_free(shape);
 }
@@ -65,7 +77,25 @@ int Shape3D_addPoint(Shape3D* shape, Point3D* p)
 	return shape->nPoints++;
 }
 
-void Shape3D_addFace(Shape3D* shape, Point3D* a, Point3D* b, Point3D* c, Point3D* d, float colorBias)
+#if ENABLE_TEXTURES
+// makes the texmap buffer as long as the face buffer
+static void
+Shape3D_resize_texmap_buffer(Shape3D* shape)
+{
+	int was_null = shape->texmap == NULL;
+	shape->texmap = m3d_realloc(shape->texmap, shape->nFaces * sizeof(FaceTexture));
+	if (was_null)
+	{
+		memset(shape->texmap, 0, sizeof(FaceTexture) * shape->nFaces);
+	}
+	else
+	{
+		memset(shape->texmap + (shape->nFaces - 1), 0, sizeof(FaceTexture));
+	}
+}
+#endif
+
+size_t Shape3D_addFace(Shape3D* shape, Point3D* a, Point3D* b, Point3D* c, Point3D* d, float colorBias)
 {
 	shape->faces = m3d_realloc(shape->faces, (shape->nFaces + 1) * sizeof(Face3D));
 	
@@ -90,12 +120,49 @@ void Shape3D_addFace(Shape3D* shape, Point3D* a, Point3D* b, Point3D* c, Point3D
 		shape->center.y += (a->y + b->y + c->y) / 3 / shape->nFaces;
 		shape->center.z += (a->z + b->z + c->z) / 3 / shape->nFaces;
 	}
+	
+	#if ENABLE_TEXTURES
+	if (shape->texmap)
+		Shape3D_resize_texmap_buffer(shape);
+	#endif
+	
+	return shape->nFaces - 1;
 }
 
 void Shape3D_setClosed(Shape3D* shape, int flag)
 {
 	shape->isClosed = flag;
 }
+
+#if ENABLE_TEXTURES
+void Shape3D_setFaceTextureMap(
+	Shape3D* shape, size_t face_idx,
+	Point2D t1, Point2D t2, Point2D t3, Point2D t4
+)
+{
+	if (!shape->texmap)
+		Shape3D_resize_texmap_buffer(shape);
+	if (face_idx < shape->nFaces)
+	{
+		FaceTexture* ft = &shape->texmap[face_idx];
+		ft->texture_enabled = 1;
+		ft->t1 = t1;
+		ft->t2 = t2;
+		ft->t3 = t3;
+		ft->t4 = t4;
+	}
+}
+
+// Note: shape gains ownership of this bitmap.
+void Shape3D_setTexture(Shape3D* shape, LCDBitmap* texture)
+{
+	if (shape->texture)
+	{
+		pd->graphics->freeBitmap(texture);
+	}
+	shape->texture = texture;
+}
+#endif
 
 #if ENABLE_ORDERING_TABLE
 void Shape3D_setOrderTableSize(Shape3D* shape, int size)

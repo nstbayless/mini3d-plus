@@ -65,6 +65,27 @@ static void* get3DObj(int n, char* type)
 	return obj;
 }
 
+#if ENABLE_TEXTURES
+static LCDBitmap* getArgBitmap(int n)
+{
+	LCDBitmap* bitmap;
+	switch (pd->lua->getArgType(2, NULL))
+	{
+	case kTypeNil:
+		bitmap = NULL;
+		break;
+	case kTypeString:
+		bitmap = pd->graphics->loadBitmap(pd->lua->getArgString(2), NULL);
+		break;
+	default:
+		bitmap = pd->lua->getBitmap(2);
+		bitmap = pd->graphics->copyBitmap(bitmap);
+		break;
+	}
+	return bitmap;
+}
+#endif
+
 static Scene3D* getScene(int n)			{ return get3DObj(n, "lib3d.scene"); }
 static Scene3DNode* getSceneNode(int n)	{ return get3DObj(n, "lib3d.scenenode"); }
 static Shape3D* getShape(int n)			{ return get3DObj(n, "lib3d.shape"); }
@@ -488,8 +509,29 @@ static int shape_addFace(lua_State* L)
 	else
 		color = pd->lua->getArgFloat(5);
 	
-	Shape3D_addFace(shape, a, b, c, d, color);
+	int face_idx = Shape3D_addFace(shape, a, b, c, d, color);
+	pd->lua->pushInt(face_idx);
+	return 1;
+}
 
+static int shape_setFaceTextureMap(lua_State* L)
+{
+	Shape3D* shape = getShape(1);
+	int face_idx = pd->lua->getArgInt(2);
+	float u1 = pd->lua->getArgFloat(3);
+	float v1 = pd->lua->getArgFloat(4);
+	float u2 = pd->lua->getArgFloat(5);
+	float v2 = pd->lua->getArgFloat(6);
+	float u3 = pd->lua->getArgFloat(7);
+	float v3 = pd->lua->getArgFloat(8);
+	
+	// FIXME: use only if these are provided
+	float u4 = pd->lua->getArgFloat(9);
+	float v4 = pd->lua->getArgFloat(10);
+	
+	Shape3D_setFaceTextureMap(shape, face_idx,
+		(Point2D){u1, v1}, (Point2D){u2, v2}, (Point2D){u3, v3}, (Point2D){u4, v4});
+		
 	return 0;
 }
 
@@ -537,6 +579,15 @@ collision_detected:
 	return 2;
 }
 
+#if ENABLE_TEXTURES
+static int shape_setTexture(lua_State* L)
+{
+	Shape3D* shape = getShape(1);
+	Shape3D_setTexture(shape, getArgBitmap(2));
+	return 0;
+}
+#endif
+
 #if ENABLE_ORDERING_TABLE
 static int shape_setOrderTableSize(lua_State* L)
 {
@@ -552,6 +603,10 @@ static const lua_reg lib3DShape[] =
 	{ "addFace",		shape_addFace },
 	{ "setClosed", 		shape_setClosed },
 	{ "collidesSphere", shape_collideSphere },
+#if ENABLE_TEXTURES
+	{ "setTexture",		shape_setTexture },
+	{ "setFaceTextureMap", shape_setFaceTextureMap},
+#endif
 #if ENABLE_ORDERING_TABLE
 	{ "setOrderTableSize", shape_setOrderTableSize, },
 #endif
@@ -597,29 +652,14 @@ static int imposter_setRectangle(lua_State* L)
 	return 0;
 }
 
+#if ENABLE_TEXTURES
 static int imposter_setBitmap(lua_State* L)
 {
 	Imposter3D* imposter = getImposter(1);
-	LCDBitmap* bitmap;
-	
-	// nil - clear bitmap
-	switch (pd->lua->getArgType(2, NULL))
-	{
-	case kTypeNil:
-		bitmap = NULL;
-		break;
-	case kTypeString:
-		bitmap = pd->graphics->loadBitmap(pd->lua->getArgString(2), NULL);
-		break;
-	default:
-		bitmap = pd->lua->getBitmap(2);
-		bitmap = pd->graphics->copyBitmap(bitmap);
-		break;
-	}
-	
-	Imposter3D_setBitmap(imposter, bitmap);
+	Imposter3D_setBitmap(imposter, getArgBitmap(2));
 	return 0;
 }
+#endif
 
 static const lua_reg lib3DImposter[] =
 {
@@ -627,7 +667,9 @@ static const lua_reg lib3DImposter[] =
 	{ "__gc",			imposter_gc },
 	{ "setPosition",	imposter_setPosition },
 	{ "setRectangle", 	imposter_setRectangle },
-	{ "setBitmap", 		imposter_setBitmap },
+#if ENABLE_TEXTURES
+	{ "setTexture",		imposter_setBitmap },
+#endif
 	{ NULL,				NULL }
 };
 

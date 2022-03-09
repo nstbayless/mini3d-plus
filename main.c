@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "pd_api.h"
+#include <pd_api.h>
 #include "luaglue.h"
 
 #ifdef _WINDLL

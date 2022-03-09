@@ -23,9 +23,15 @@
 // 2: textures are permitted with or without transparency
 #define ENABLE_TEXTURES 2
 
+// ignored if textures are disabled
+// if 1, textures are mapped with homogenous coordinates.
+// if 0, textures will be significantly warped as they approach
+// the camera.
+#define ENABLE_TEXTURES_PROJECTIVE 1
+
 #define FACE_CLIPPING 1
 
-#define CLIP_EPSILON 0.5f
+#define CLIP_EPSILON 10.0f
 
 #include <stddef.h>
 

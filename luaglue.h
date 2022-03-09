@@ -9,7 +9,7 @@
 #ifndef _d_glue_h
 #define _d_glue_h
 
-#include "pd_api.h"
+#include <pd_api.h>
 
 void register3D(PlaydateAPI* playdate);
 

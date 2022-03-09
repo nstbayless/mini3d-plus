@@ -7,6 +7,7 @@ local rad_to_deg = 180 / math.pi
 n = scene:getRootNode()
 n2 = n:addChildNode()
 terrain = lib3d.shape.new()
+terrain:setTexture("assets/kart.png")
 
 local function swap(a, i, j)
     local tmp = a[i]
@@ -34,8 +35,15 @@ end
 j = json.decodeFile("assets/track.json")
 if j then
     for _, face in ipairs(j["faces"]) do
-        terrain:addFace(
+        f_idx = terrain:addFace(
             table.unpack(face_vertices(face))
+        )
+        terrain:setFaceTextureMap(
+            f_idx,
+            0, 0,
+            0, 1,
+            1, 1,
+            1, 0
         )
     end
 end
@@ -47,9 +55,8 @@ kartshape = lib3d.imposter.new()
 
 kartshape:setPosition(lib3d.point.new(0, 0, 0))
 kartshape:setRectangle(-KSIZE /2, -KSIZE, KSIZE /2, 0)
-kartshape:setBitmap("assets/kart.png")
+kartshape:setTexture("assets/kart.png")
 
-    
 kartNode = n:addChildNode()
 kartNode:addImposter(kartshape)
 

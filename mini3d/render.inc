@@ -23,12 +23,20 @@
     #define SYM_ZTA SYM_ZT
 #endif
 
+// 1 if either RENDER_Z or projective textures
+// means we need to track a Z coordinate
+#if (defined(RENDER_Z) || (ENABLE_TEXTURES && ENABLE_TEXTURES_PROJECTIVE))
+    #define HOMOGEN_Z 1
+#else
+    #define HOMOGEN_Z 0
+#endif
+
 #define SYM(x) GLUE(x, SYM_ZTA)
 
 static void
 SYM(drawFragment)(
 	uint32_t* row, uint16_t* zbrow, int x, int endx
-#ifdef RENDER_Z
+#if HOMOGEN_Z
 	, uint32_t z, int32_t dzdx
 #endif
 #ifdef RENDER_T
@@ -48,7 +56,7 @@ SYM(drawFragment)(
 	
 	if ( x < 0 )
 	{
-        #ifdef RENDER_Z
+        #if HOMOGEN_Z
 		z += -x * dzdx;
         #endif
         
@@ -104,7 +112,7 @@ SYM(drawFragment)(
 		
 		++x;
         
-        #ifdef RENDER_Z
+        #if HOMOGEN_Z
 		z += dzdx;
         #endif
         
@@ -151,7 +159,7 @@ SYM(drawFragment)(
 static void 
 SYM(fillRange)(
 	uint8_t* bitmap, int rowstride, int y, int endy, int32_t* x1p, int32_t dx1, int32_t* x2p, int32_t dx2
-#ifdef RENDER_Z
+#ifdef HOMOGEN_Z
 	, uint32_t* zp, int32_t dzdy, int32_t dzdx
 #endif
 #ifdef RENDER_T
@@ -164,7 +172,7 @@ SYM(fillRange)(
 )
 {
 	int32_t x1 = *x1p, x2 = *x2p;
-    #ifdef RENDER_Z
+    #ifdef HOMOGEN_Z
 	uint32_t z = *zp;
     #endif
     #ifdef RENDER_T
@@ -177,7 +185,7 @@ SYM(fillRange)(
 		int dy = endy - y;
 		*x1p = x1 + dy * dx1;
 		*x2p = x2 + dy * dx2;
-        #ifdef RENDER_Z
+        #ifdef HOMOGEN_Z
 		*zp = z + dy * dzdy;
         #endif
         #ifdef RENDER_T
@@ -191,7 +199,7 @@ SYM(fillRange)(
 	{
 		x1 += -y * dx1;
 		x2 += -y * dx2;
-        #ifdef RENDER_Z
+        #ifdef HOMOGEN_Z
 		z += -y * dzdy;
         #endif
         #ifdef RENDER_T
@@ -227,7 +235,8 @@ SYM(fillRange)(
             drawFragment_zt(
             #endif
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
-                z, dzdx, u, dudx, v, dvdx,
+                z, dzdx,
+                u, dudx, v, dvdx,
                 bmdata, rowbytes, width, height
             );
         #elif defined(RENDER_T) && !defined(RENDER_Z)
@@ -237,6 +246,9 @@ SYM(fillRange)(
             drawFragment_t(
             #endif
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
+                #if HOMOGEN_Z
+                z, dzdx,
+                #endif
                 u, dudx, v, dvdx,
                 bmdata, rowbytes, width, height
             );
@@ -252,7 +264,7 @@ SYM(fillRange)(
 		
 		x1 += dx1;
 		x2 += dx2;
-        #ifdef RENDER_Z
+        #if HOMOGEN_Z
 		z += dzdy;
         #endif
         #ifdef RENDER_T
@@ -264,7 +276,7 @@ SYM(fillRange)(
 	
 	*x1p = x1;
 	*x2p = x2;
-    #ifdef RENDER_Z
+    #ifdef HOMOGEN_Z
 	*zp = z;
     #endif
     #ifdef RENDER_T
@@ -280,6 +292,7 @@ SYM(fillRange)(
 #undef SYM_ZTA
 #undef _GLUE
 #undef GLUE
+#undef HOMOGEN_Z
 
 #ifdef RENDER_Z
     #undef RENDER_Z

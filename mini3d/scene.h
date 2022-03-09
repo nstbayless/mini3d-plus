@@ -22,6 +22,11 @@ struct FaceInstance
 	Point3D* p4;
 	Vector3D normal;
 	float colorBias; // added to lighting computation
+#if ENABLE_TEXTURES
+	// index of face in prototype
+	// we need this to look up the uv coords of the vertices
+	uint16_t org_face;
+#endif
 #if ENABLE_ORDERING_TABLE
 	struct FaceInstance* next;
 #endif
@@ -44,6 +49,9 @@ typedef struct
 	Point3D p3;
 	Point3D p4;
 	FaceInstance* src;
+	#if ENABLE_TEXTURES
+	FaceTexture tex;
+	#endif
 } ClippedFace3D;
 
 #define CLIP_RESIZE 0x10

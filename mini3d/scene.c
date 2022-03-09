@@ -172,6 +172,11 @@ Scene3DNode_addShapeWithTransform(Scene3DNode* node, Shape3D* shape, Matrix3D tr
 	{
 		// point face vertices at copy's points array
 		FaceInstance* face = &nodeshape->faces[i];
+		
+		#if ENABLE_TEXTURES
+		// and record its index too.
+		face->org_face = i;
+		#endif
 
 		face->p1 = &nodeshape->points[shape->faces[i].p1];
 		face->p2 = &nodeshape->points[shape->faces[i].p2];
@@ -250,7 +255,7 @@ static void applyPerspectiveToPoint(Scene3D* scene, Point3D* p)
 {
 	if ( scene->hasPerspective )
 	{
-		if (p->z > CLIP_EPSILON / 2)
+		if (p->z >= CLIP_EPSILON)
 		{
 			p->x = scene->scale * (p->x / p->z + 1.6666666 * scene->centerx);
 			p->y = scene->scale * (p->y / p->z + scene->centery);
@@ -278,20 +283,48 @@ static ClippedFace3D* clipAllocate(ShapeInstance* shape, FaceInstance* face)
 	return &shape->clip[index];
 }
 
-static void interpolatePointAtZClip(Point3D* out, Point3D* a, Point3D* b)
+static float interpolatePointAtZClip(Point3D* out, Point3D* a, Point3D* b)
 {
 	float p = (CLIP_EPSILON - b->z) / (a->z - b->z);
 	out->z = CLIP_EPSILON;
 	out->x = p * a->x + (1 - p) * b->x;
 	out->y = p * a->y + (1 - p) * b->y;
+	return p;
 }
 
+#if ENABLE_TEXTURES
+static void interpolatePoint2D(Point2D* out, Point2D* a, Point2D* b, float p)
+{
+	out->x = p * a->x + (1-p) * b->x;
+	out->y = p * a->y + (1-p) * b->y;
+}
+#endif
+
 // one point in front of camera, two points behind.
-static void calculateClipping_straddle12(ClippedFace3D* clip, Point3D* a, Point3D* b1, Point3D* b2)
+static void calculateClipping_straddle12(
+	ClippedFace3D* clip, Point3D* a, Point3D* b1, Point3D* b2
+#if ENABLE_TEXTURES
+	, Point2D* ta, Point2D* tb1, Point2D* tb2
+#endif
+)
 {
 	clip->p2 = *a;
-	interpolatePointAtZClip(&clip->p3, a, b1);
-	interpolatePointAtZClip(&clip->p4, a, b2);
+	float pab1 = interpolatePointAtZClip(&clip->p3, a, b1);
+	float pab2 = interpolatePointAtZClip(&clip->p4, a, b2);
+	
+	#if ENABLE_TEXTURES
+	if (ta)
+	{
+		clip->tex.t1 = *ta;
+		interpolatePoint2D(&clip->tex.t2, ta, tb1, pab1);
+		interpolatePoint2D(&clip->tex.t3, ta, tb2, pab2);
+		clip->tex.texture_enabled = 0;
+	}
+	else
+	{
+		clip->tex.texture_enabled = 0;
+	}
+	#endif
 	
 	applyPerspectiveToPoint(clipScene, &clip->p2);
 	applyPerspectiveToPoint(clipScene, &clip->p3);
@@ -299,12 +332,32 @@ static void calculateClipping_straddle12(ClippedFace3D* clip, Point3D* a, Point3
 }
 
 // two points in front of camera, one point behind.
-static void calculateClipping_straddle21(ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* b)
+static void calculateClipping_straddle21(
+	ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* b
+#if ENABLE_TEXTURES
+	, Point2D* ta1, Point2D* ta2, Point2D* tb
+#endif
+)
 {
 	clip->p1 = a1;
 	clip->p2 = *a2;
-	interpolatePointAtZClip(&clip->p3, a2, b);
-	interpolatePointAtZClip(&clip->p4, a1, b);
+	float pa2b = interpolatePointAtZClip(&clip->p3, a2, b);
+	float pa1b = interpolatePointAtZClip(&clip->p4, a1, b);
+	
+	#if ENABLE_TEXTURES
+	if (ta1)
+	{
+		clip->tex.t4 = *ta1;
+		clip->tex.t1 = *ta2;
+		interpolatePoint2D(&clip->tex.t2, ta2, tb, pa2b);
+		interpolatePoint2D(&clip->tex.t3, ta1, tb, pa1b);
+		clip->tex.texture_enabled = 1;
+	}
+	else
+	{
+		clip->tex.texture_enabled = 0;
+	}
+	#endif
 	
 	applyPerspectiveToPoint(clipScene, &clip->p2);
 	applyPerspectiveToPoint(clipScene, &clip->p3);
@@ -312,12 +365,32 @@ static void calculateClipping_straddle21(ClippedFace3D* clip, Point3D* a1, Point
 }
 
 // two points in front of camera, two points behind.
-static void calculateClipping_straddle22(ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* b1, Point3D* b2)
+static void calculateClipping_straddle22(
+	ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* b1, Point3D* b2
+#if ENABLE_TEXTURES
+	, Point2D* ta1, Point2D* ta2, Point2D* tb1, Point2D* tb2
+#endif
+)
 {
 	clip->p1 = a1;
 	clip->p2 = *a2;
-	interpolatePointAtZClip(&clip->p3, a2, b1);
-	interpolatePointAtZClip(&clip->p4, a1, b2);
+	float pa2b1 = interpolatePointAtZClip(&clip->p3, a2, b1);
+	float pa1b2 = interpolatePointAtZClip(&clip->p4, a1, b2);
+	
+	#if ENABLE_TEXTURES
+	if (ta1)
+	{
+		clip->tex.t4 = *ta1;
+		clip->tex.t1 = *ta2;
+		interpolatePoint2D(&clip->tex.t2, ta2, tb1, pa2b1);
+		interpolatePoint2D(&clip->tex.t3, ta1, tb2, pa1b2);
+		clip->tex.texture_enabled = 1;
+	}
+	else
+	{
+		clip->tex.texture_enabled = 0;
+	}
+	#endif
 	
 	applyPerspectiveToPoint(clipScene, &clip->p2);
 	applyPerspectiveToPoint(clipScene, &clip->p3);
@@ -325,16 +398,89 @@ static void calculateClipping_straddle22(ClippedFace3D* clip, Point3D* a1, Point
 }
 
 // three points in front of camera, zero behind.
-static void calculateClipping_straddle30(ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* a3)
+static void calculateClipping_straddle30(
+	ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* a3
+#if ENABLE_TEXTURES
+	, Point2D* ta1, Point2D* ta2, Point2D* ta3
+#endif
+)
 {
 	clip->p2 = *a1;
 	clip->p3 = *a2;
 	clip->p4 = *a3;
 	
+	#if ENABLE_TEXTURES
+	if (ta1)
+	{
+		clip->tex.t1 = *ta1;
+		clip->tex.t2 = *ta2;
+		clip->tex.t3 = *ta3;
+		clip->tex.texture_enabled = 1;
+	}
+	else
+	{
+		clip->tex.texture_enabled = 0;
+	}
+	#endif
+	
 	applyPerspectiveToPoint(clipScene, &clip->p2);
 	applyPerspectiveToPoint(clipScene, &clip->p3);
 	applyPerspectiveToPoint(clipScene, &clip->p4);
 }
+
+#if !ENABLE_TEXTURES
+	#define CLIP3(AB, A, B, C) \
+	{ \
+		calculateClipping_straddle##AB( \
+			clipAllocate(shape, face), \
+			p##A, p##B, p##C \
+		); \
+	}
+	#define CLIP4(AB, A, B, C, D) \
+	{ \
+		calculateClipping_straddle##AB( \
+			clipAllocate(shape, face), \
+			p##A, p##B, p##C, p##D \
+		); \
+	}
+#else
+	#define CLIP3(AB, A, B, C) \
+	{ \
+		if (shape->prototype->texmap && shape->prototype->texmap[face->org_face].texture_enabled) \
+		{ \
+			FaceTexture* ft = &shape->prototype->texmap[face->org_face]; \
+			calculateClipping_straddle##AB( \
+				clipAllocate(shape, face), \
+				p##A, p##B, p##C, &ft->t##A, &ft->t##B, &ft->t##C \
+			); \
+		}\
+		else \
+		{\
+			calculateClipping_straddle##AB( \
+				clipAllocate(shape, face), \
+				p##A, p##B, p##C, NULL, NULL, NULL \
+			); \
+		}\
+	}
+	#define CLIP4(AB, A, B, C, D) \
+	{ \
+		if (shape->prototype->texmap && shape->prototype->texmap[face->org_face].texture_enabled) \
+		{ \
+			FaceTexture* ft = &shape->prototype->texmap[face->org_face]; \
+			calculateClipping_straddle##AB( \
+				clipAllocate(shape, face), \
+				p##A, p##B, p##C, p##D, &ft->t##A, &ft->t##B, &ft->t##C, &ft->t##D \
+			); \
+		}\
+		else \
+		{\
+			calculateClipping_straddle##AB( \
+				clipAllocate(shape, face), \
+				p##A, p##B, p##C, p##D, NULL, NULL, NULL, NULL \
+			); \
+		}\
+	}
+#endif
 
 static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstance* face)
 {
@@ -342,122 +488,67 @@ static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstanc
 	Point3D* p2 = face->p2;
 	Point3D* p3 = face->p3;
 	
-	uint8_t q1 = p1->z > CLIP_EPSILON / 2;
-	uint8_t q2 = p2->z > CLIP_EPSILON / 2;
-	uint8_t q3 = p3->z > CLIP_EPSILON / 2;
+	uint8_t q1 = p1->z >= CLIP_EPSILON;
+	uint8_t q2 = p2->z >= CLIP_EPSILON;
+	uint8_t q3 = p3->z >= CLIP_EPSILON;
 	
 	if (face->p4)
 	{
 		Point3D* p4 = face->p4;
-		uint8_t q4 = p4->z > CLIP_EPSILON / 2;
+		uint8_t q4 = p4->z >= CLIP_EPSILON;
 		if (q4 && q3 && q2 && q1) return;
 		else if (!q4 && !q3 && !q2 && !q1) return;
 		else if (q1 && !q2 && !q3 && !q4)
 		{
-			calculateClipping_straddle12(
-				clipAllocate(shape, face),
-				p1, p2, p4
-			);
+			CLIP3(12, 1, 2, 4);
 		}
 		else if (!q1 && q2 && !q3 && !q4)
 		{
-			calculateClipping_straddle12(
-				clipAllocate(shape, face),
-				p2, p3, p1
-			);
+			CLIP3(12, 2, 3, 1);
 		}
 		else if (!q1 && !q2 && q3 && !q4)
 		{
-			calculateClipping_straddle12(
-				clipAllocate(shape, face),
-				p3, p4, p2
-			);
+			CLIP3(12, 3, 4, 2);
 		}
 		else if (!q1 && !q2 && !q3 && q4)
 		{
-			calculateClipping_straddle12(
-				clipAllocate(shape, face),
-				p4, p1, p3
-			);
+			CLIP3(12, 4, 1, 3);
 		}
 		else if (q1 && q2 && !q3 && !q4)
 		{
-			calculateClipping_straddle22(
-				clipAllocate(shape, face),
-				p1, p2, p3, p4
-			);
+			CLIP4(22, 1, 2, 3, 4);
 		}
 		else if (!q1 && q2 && q3 && !q4)
 		{
-			calculateClipping_straddle22(
-				clipAllocate(shape, face),
-				p2, p3, p4, p1
-			);
+			CLIP4(22, 2, 3, 4, 1);
 		}
 		else if (!q1 && !q2 && q3 && q4)
 		{
-			calculateClipping_straddle22(
-				clipAllocate(shape, face),
-				p3, p4, p1, p2
-			);
+			CLIP4(22, 3, 4, 1, 2);
 		}
 		else if (q1 && !q2 && !q3 && q4)
 		{
-			calculateClipping_straddle22(
-				clipAllocate(shape, face),
-				p4, p1, p2, p3
-			);
-		}
-		else if (q1 && q2 && !q3 && !q4)
-		{
-			calculateClipping_straddle22(
-				clipAllocate(shape, face),
-				p1, p2, p3, p4
-			);
+			CLIP4(22, 4, 1, 2, 3);
 		}
 		else if (!q1 && q2 && q3 && q4)
 		{
-			calculateClipping_straddle30(
-				clipAllocate(shape, face),
-				p2, p3, p4
-			);
-			calculateClipping_straddle21(
-				clipAllocate(shape, face),
-				p2, p4, p1
-			);
+			CLIP3(30, 2, 3, 4);
+			CLIP3(21, 2, 4, 1);
 		}
 		else if (q1 && !q2 && q3 && q4)
 		{
-			calculateClipping_straddle30(
-				clipAllocate(shape, face),
-				p3, p4, p1
-			);
-			calculateClipping_straddle21(
-				clipAllocate(shape, face),
-				p3, p1, p2
-			);
+			CLIP3(30, 3, 4, 1);
+			CLIP3(21, 3, 1, 2);
 		}
 		else if (q1 && q2 && !q3 && q4)
 		{
-			calculateClipping_straddle30(
-				clipAllocate(shape, face),
-				p4, p1, p2
-			);
-			calculateClipping_straddle21(
-				clipAllocate(shape, face),
-				p4, p2, p3
-			);
+			CLIP3(30, 4, 1, 2);
+			CLIP3(21, 4, 2, 3);
 		}
 		else if (q1 && q2 && q3 && !q4)
 		{
-			calculateClipping_straddle30(
-				clipAllocate(shape, face),
-				p1, p2, p3
-			);
-			calculateClipping_straddle21(
-				clipAllocate(shape, face),
-				p1, p3, p4
-			);
+			CLIP3(30, 1, 2, 3);
+			CLIP3(21, 1, 3, 4);
 		}
 	}
 	else
@@ -466,45 +557,27 @@ static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstanc
 		else if (!q1 && !q2 && !q3) return;
 		else if (q1 && !q2 && !q3)
 		{
-			calculateClipping_straddle12(
-				clipAllocate(shape, face),
-				p1, p2, p3
-			);
+			CLIP3(12, 1, 2, 3);
 		}
 		else if (!q1 && q2 && !q3)
 		{
-			calculateClipping_straddle12(
-				clipAllocate(shape, face),
-				p2, p1, p3
-			);
+			CLIP3(12, 2, 1, 3);
 		}
 		else if (!q1 && !q2 && q3)
 		{
-			calculateClipping_straddle12(
-				clipAllocate(shape, face),
-				p3, p2, p1
-			);
+			CLIP3(12, 3, 2, 1);
 		}
 		else if (q1 && q2 && !q3)
 		{
-			calculateClipping_straddle21(
-				clipAllocate(shape, face),
-				p1, p2, p3
-			);
+			CLIP3(21, 1, 2, 3);
 		}
 		else if (q1 && !q2 && q3)
 		{
-			calculateClipping_straddle21(
-				clipAllocate(shape, face),
-				p3, p1, p2
-			);
+			CLIP3(21, 3, 1, 2);
 		}
 		else if (!q1 && q2 && q3)
 		{
-			calculateClipping_straddle21(
-				clipAllocate(shape, face),
-				p2, p3, p1
-			);
+			CLIP3(21, 2, 3, 1);
 		}
 	}
 }
@@ -892,13 +965,19 @@ static Pattern patterns[] =
 };
 
 static inline void
-drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride, FaceInstance* face)
+drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride, FaceInstance* face
+	#if ENABLE_TEXTURES
+	, FaceTexture* ft
+	#else
+	, void* UNUSED
+	#endif
+)
 {
 	// If any vertex is behind the camera, skip the whole face
 	// TODO: consider caching the 'cull' computation.
 	// (we will render it elsewhere when we render clipped polygons )
-	if ( face->p1->z <= CLIP_EPSILON / 2 || face->p2->z <= CLIP_EPSILON / 2 || face->p3->z <= CLIP_EPSILON / 2
-		|| (face->p4 && face->p4->z <= CLIP_EPSILON / 2))
+	if ( face->p1->z < CLIP_EPSILON || face->p2->z < CLIP_EPSILON || face->p3->z < CLIP_EPSILON
+		|| (face->p4 && face->p4->z < CLIP_EPSILON))
 			return;
 	
 	float x1 = face->p1->x;
@@ -964,12 +1043,30 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 		vi = 0;
 
 	uint8_t* pattern = (uint8_t*)&patterns[vi];
+	
+	#if ENABLE_TEXTURES
+	if (!ft && shape->prototype->texmap && shape->prototype->texture)
+	{
+		ft = &shape->prototype->texmap[face->org_face];
+	}
+	#endif
 
 	if ( face->p4 != NULL )
 	{
 #if ENABLE_Z_BUFFER
 		if ( shape->header.useZBuffer )
+		{
+			#if ENABLE_TEXTURES
+			if ( ft && ft->texture_enabled )
+			{
+				fillQuad_zt(bitmap, rowstride, face->p1, face->p2, face->p3, face->p4,
+					shape->prototype->texture, ft->t1, ft->t2, ft->t3, ft->t4
+				);
+			}
+			else
+			#endif
 			fillQuad_zbuf(bitmap, rowstride, face->p1, face->p2, face->p3, face->p4, pattern);
+		}
 		else
 #endif
 			fillQuad(bitmap, rowstride, face->p1, face->p2, face->p3, face->p4, pattern);
@@ -978,7 +1075,18 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 	{
 #if ENABLE_Z_BUFFER
 		if ( shape->header.useZBuffer )
+		{
+			#if ENABLE_TEXTURES
+			if ( ft && ft->texture_enabled )
+			{
+				fillTriangle_zt(bitmap, rowstride, face->p1, face->p2, face->p3,
+					shape->prototype->texture, ft->t1, ft->t2, ft->t3
+				);
+			}
+			else
+			#endif
 			fillTriangle_zbuf(bitmap, rowstride, face->p1, face->p2, face->p3, pattern);
+		}
 		else
 #endif
 			fillTriangle(bitmap, rowstride, face->p1, face->p2, face->p3, pattern);
@@ -997,7 +1105,7 @@ drawFilledShape(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowst
 			
 			while ( face != NULL )
 			{
-				drawShapeFace(scene, shape, bitmap, rowstride, face);
+				drawShapeFace(scene, shape, bitmap, rowstride, face, NULL);
 				face = face->next;
 			}
 		}
@@ -1005,7 +1113,7 @@ drawFilledShape(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowst
 	else
 #endif
 	for ( int f = 0; f < shape->nFaces; ++f )
-		drawShapeFace(scene, shape, bitmap, rowstride, &shape->faces[f]);
+		drawShapeFace(scene, shape, bitmap, rowstride, &shape->faces[f], NULL);
 		
 	// XXX (ORDERING_TABLE only)
 	// NOTE (ORDERING_TABLE): we are incorrectly assuming that culled faces are ALWAYS closest to the camera.
@@ -1023,7 +1131,13 @@ drawFilledShape(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowst
 		f.p3 = &clip->p4;
 		f.p4 = clip->p1;
 		
-		drawShapeFace(scene, shape, bitmap, rowstride, &f);
+		drawShapeFace(scene, shape, bitmap, rowstride, &f,
+		#if ENABLE_TEXTURES
+			&clip->tex
+		#else
+			NULL
+		#endif
+		);
 	}
 	#endif
 }
