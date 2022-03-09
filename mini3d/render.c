@@ -13,6 +13,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "render.h"
+#include <assert.h>
 
 #define LCD_ROWS 240
 #define LCD_COLUMNS 400
@@ -23,6 +24,10 @@
 
 #if !defined(MAX)
 #define MAX(a, b) (((a)>(b))?(a):(b))
+#endif
+
+#if !defined (CLAMP)
+#define CLAMP(a, b, x) (MAX(a, MIN(b, x)))
 #endif
 
 #if ENABLE_TEXTURES_PROJECTIVE
@@ -36,6 +41,43 @@
 	#define UVW_SHIFT 16
 	#define UVW_SLOPE slope
 #endif
+
+Pattern patterns[LIGHTING_PATTERN_COUNT] =
+{
+	{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+	{ 0x80, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00 },
+	{ 0x88, 0x00, 0x00, 0x00, 0x88, 0x00, 0x00, 0x00 },
+	{ 0x88, 0x00, 0x20, 0x00, 0x88, 0x00, 0x02, 0x00 },
+	{ 0x88, 0x00, 0x22, 0x00, 0x88, 0x00, 0x22, 0x00 },
+	{ 0xa8, 0x00, 0x22, 0x00, 0x8a, 0x00, 0x22, 0x00 },
+	{ 0xaa, 0x00, 0x22, 0x00, 0xaa, 0x00, 0x22, 0x00 },
+	{ 0xaa, 0x00, 0xa2, 0x00, 0xaa, 0x00, 0x2a, 0x00 },
+	{ 0xaa, 0x00, 0xaa, 0x00, 0xaa, 0x00, 0xaa, 0x00 },
+	{ 0xaa, 0x40, 0xaa, 0x00, 0xaa, 0x04, 0xaa, 0x00 },
+	{ 0xaa, 0x44, 0xaa, 0x00, 0xaa, 0x44, 0xaa, 0x00 },
+	{ 0xaa, 0x44, 0xaa, 0x10, 0xaa, 0x44, 0xaa, 0x01 },
+	{ 0xaa, 0x44, 0xaa, 0x11, 0xaa, 0x44, 0xaa, 0x11 },
+	{ 0xaa, 0x54, 0xaa, 0x11, 0xaa, 0x45, 0xaa, 0x11 },
+	{ 0xaa, 0x55, 0xaa, 0x11, 0xaa, 0x55, 0xaa, 0x11 },
+	{ 0xaa, 0x55, 0xaa, 0x51, 0xaa, 0x55, 0xaa, 0x15 },
+	{ 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55 },
+	{ 0xba, 0x55, 0xaa, 0x55, 0xab, 0x55, 0xaa, 0x55 },
+	{ 0xbb, 0x55, 0xaa, 0x55, 0xbb, 0x55, 0xaa, 0x55 },
+	{ 0xbb, 0x55, 0xea, 0x55, 0xbb, 0x55, 0xae, 0x55 },
+	{ 0xbb, 0x55, 0xee, 0x55, 0xbb, 0x55, 0xee, 0x55 },
+	{ 0xfb, 0x55, 0xee, 0x55, 0xbf, 0x55, 0xee, 0x55 },
+	{ 0xff, 0x55, 0xee, 0x55, 0xff, 0x55, 0xee, 0x55 },
+	{ 0xff, 0x55, 0xfe, 0x55, 0xff, 0x55, 0xef, 0x55 },
+	{ 0xff, 0x55, 0xff, 0x55, 0xff, 0x55, 0xff, 0x55 },
+	{ 0xff, 0x55, 0xff, 0xd5, 0xff, 0x55, 0xff, 0x5d },
+	{ 0xff, 0x55, 0xff, 0xdd, 0xff, 0x55, 0xff, 0xdd },
+	{ 0xff, 0x75, 0xff, 0xdd, 0xff, 0x57, 0xff, 0xdd },
+	{ 0xff, 0x77, 0xff, 0xdd, 0xff, 0x77, 0xff, 0xdd },
+	{ 0xff, 0x77, 0xff, 0xfd, 0xff, 0x77, 0xff, 0xdf },
+	{ 0xff, 0x77, 0xff, 0xff, 0xff, 0x77, 0xff, 0xff },
+	{ 0xff, 0xf7, 0xff, 0xff, 0xff, 0x7f, 0xff, 0xff },
+	{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }
+};
 
 #if ENABLE_Z_BUFFER
 static uint16_t zbuf[LCD_COLUMNS*LCD_ROWS];
@@ -146,6 +188,21 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 #if ENABLE_Z_BUFFER
 	#define RENDER_Z
 	#include "render.inc"
+	
+	#if ENABLE_TEXTURES_GREYSCALE
+		#if ENABLE_TEXTURES_MASK
+			#define RENDER_Z
+			#define RENDER_T
+			#define RENDER_A
+			#define RENDER_G
+			#include "render.inc"
+		#endif
+		
+		#define RENDER_Z
+		#define RENDER_T
+		#define RENDER_G
+		#include "render.inc"
+	#endif
 	
 	#if ENABLE_TEXTURES_MASK
 		#define RENDER_Z
@@ -531,6 +588,9 @@ LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point
 LCDRowRange fillTriangle_zt(
 	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3,
 	LCDBitmap* texture, Point2D t1, Point2D t2, Point2D t3
+	#if ENABLE_TEXTURES_GREYSCALE
+	, float lighting, float lighting_weight
+	#endif
 )
 {
 	sortTri_t(&p1, &p2, &p3, &t1, &t2, &t3);
@@ -620,8 +680,29 @@ LCDRowRange fillTriangle_zt(
 	#if ENABLE_TEXTURES_PROJECTIVE
 	uvw_int2_t w = w1 * ((uvw_int2_t)(1)<<UVW_SHIFT);
 	#endif
+	
+	#if ENABLE_TEXTURES_GREYSCALE
+	// map lighting to range 0-255
+	uint8_t u8lightp = CLAMP(0.0f, 1.0f, lighting_weight) * 255.99;
+	uint8_t u8light = CLAMP(0.0f, 1.0f, lighting) * (LIGHTING_PATTERN_COUNT - 0.001f);
+	// precompute
+	u8light = (((uint16_t)u8light * u8lightp) + 0x80) >> 8;
+	
+	#define fillRange_zt_or_ztg(...) \
+		if (u8lightp == 0) \
+		{ \
+			fillRange_zt(__VA_ARGS__); \
+		} \
+		else \
+		{ \
+			fillRange_ztg(__VA_ARGS__, u8light, 0xff - u8lightp); \
+		}
+	#else
+	#define fillRange_zt_or_ztg fillRange_zt
+	#endif
 
-	fillRange_zt(
+
+	fillRange_zt_or_ztg(
 		bitmap, rowstride, p1->y, MIN(LCD_ROWS, p2->y), &x1, dx1, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
 		#if ENABLE_TEXTURES_PROJECTIVE
 			, &w, dwdy, dwdx
@@ -643,7 +724,7 @@ LCDRowRange fillTriangle_zt(
 		dwdy = UVW_SLOPE(w2, p2->y, w3, p3->y);
 		w = w2 * ((uvw_int2_t)(1)<<UVW_SHIFT);
 		#endif
-		fillRange_zt(
+		fillRange_zt_or_ztg(
 			bitmap, rowstride, p2->y, endy, &x1, dx, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
 		#if ENABLE_TEXTURES_PROJECTIVE
 			, &w, dwdy, dwdx
@@ -653,7 +734,7 @@ LCDRowRange fillTriangle_zt(
 	else
 	{
 		x2 = p2->x * (1<<16);
-		fillRange_zt(
+		fillRange_zt_or_ztg(
 			bitmap, rowstride, p2->y, endy, &x1, dx1, &x2, dx, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
 			#if ENABLE_TEXTURES_PROJECTIVE
 				, &w, dwdy, dwdx
@@ -685,11 +766,24 @@ LCDRowRange fillQuad_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* 
 LCDRowRange fillQuad_zt(
 	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4,
 	LCDBitmap* texture, Point2D t1, Point2D t2, Point2D t3, Point2D t4
+	#if ENABLE_TEXTURES_GREYSCALE
+	, float lighting, float lighting_weight
+	#endif
 )
 {
 	// XXX - implement with 3 fillrange_z() calls
-	fillTriangle_zt(bitmap, rowstride, p1, p2, p3, texture, t1, t2, t3);
-	return fillTriangle_zt(bitmap, rowstride, p1, p3, p4, texture, t1, t3, t4);
+	fillTriangle_zt(
+		bitmap, rowstride, p1, p2, p3, texture, t1, t2, t3
+		#if ENABLE_TEXTURES_GREYSCALE
+		, lighting, lighting_weight
+		#endif
+	);
+	return fillTriangle_zt(
+		bitmap, rowstride, p1, p3, p4, texture, t1, t3, t4
+		#if ENABLE_TEXTURES_GREYSCALE
+		, lighting, lighting_weight
+		#endif
+	);
 }
 #endif
 

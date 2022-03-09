@@ -23,7 +23,13 @@
     #define SYM_ZTA SYM_ZT
 #endif
 
-#define SYM(x) GLUE(x, SYM_ZTA)
+#ifdef RENDER_G
+    #define SYM_ZTAG GLUE(SYM_ZTA, g)
+#else
+    #define SYM_ZTAG SYM_ZTA
+#endif
+
+#define SYM(x) GLUE(x, SYM_ZTAG)
 
 static void
 SYM(drawFragment)(
@@ -38,6 +44,9 @@ SYM(drawFragment)(
 #if ENABLE_TEXTURES_PROJECTIVE
     , uvw_int2_t w, uvw_int2_t dwdx
 #endif
+#ifdef RENDER_G
+    , uint8_t light, uint8_t texp, uint8_t pattern_y
+    #endif
 #else
     , uint32_t color
 #endif
@@ -91,10 +100,6 @@ SYM(drawFragment)(
 		uint32_t texpix = (texdata[ti] << (ui % 8)) & 0x80; // either 0x80 or 0.
         #endif
         
-        #ifdef RENDER_T
-        color |= (texpix << 24) >> (x%32);
-        #endif
-        
         #ifdef RENDER_A
         uint32_t alpha = (maskdata[ti] << (ui % 8)) & 0x80; // either 0x80 or 0.
         #else
@@ -112,6 +117,18 @@ SYM(drawFragment)(
         mask |= (alpha << 24) >> (x%32);
         #else
             #pragma error "render.inc requires at least one of RENDER_Z and RENDER_T defined."
+        #endif
+        
+        #ifdef RENDER_T
+            #ifdef RENDER_G
+                uint8_t tex = texpix ? (LIGHTING_PATTERN_COUNT - 1) : 0;
+                uint8_t combined = ((uint16_t)tex * texp + 0x80) >> 8;
+                combined += light;
+                uint8_t pattern_byte = patterns[combined][pattern_y];
+                texpix = (pattern_byte << (x % 8)) & 0x80;
+            #endif
+            
+            color |= (texpix << 24) >> (x%32);
         #endif
 		
 		++x;
@@ -175,6 +192,9 @@ SYM(fillRange)(
 	LCDBitmap* texture
     #if ENABLE_TEXTURES_PROJECTIVE
     , uvw_int2_t* wp, uvw_int2_t dwdy, uvw_int2_t dwdx
+    #endif
+    #ifdef RENDER_G
+    , uint8_t light, uint8_t texp
     #endif
 #else
     , uint8_t pattern[8]
@@ -248,7 +268,36 @@ SYM(fillRange)(
 
 	while ( y < endy )
 	{	
-        #if defined(RENDER_T) && defined(RENDER_Z)
+        #if defined(RENDER_T) && defined(RENDER_Z) && defined(RENDER_G)
+            #if ENABLE_TEXTURES_MASK
+            (hasmask ? drawFragment_ztag : drawFragment_ztg)(
+            #else
+            drawFragment_ztg(
+            #endif
+                (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
+                z, dzdx,
+                u, dudx, v, dvdx,
+                bmdata, rowbytes, width, height
+                #if ENABLE_TEXTURES_PROJECTIVE
+                    , w, dwdx
+                #endif
+                , light, texp, y % 8
+            );
+        #elif defined(RENDER_T) && !defined(RENDER_Z) && defined(RENDER_G)
+            #if ENABLE_TEXTURES_MASK
+            (hasmask ? drawFragment_tag : drawFragment_tg)(
+            #else
+            drawFragment_tg(
+            #endif
+                (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
+                u, dudx, v, dvdx,
+                bmdata, rowbytes, width, height
+                #if ENABLE_TEXTURES_PROJECTIVE
+                    , w, dwdx
+                #endif
+                , light, texp, y%8
+            );
+        #elif defined(RENDER_T) && defined(RENDER_Z)
             #if ENABLE_TEXTURES_MASK
             (hasmask ? drawFragment_zta : drawFragment_zt)(
             #else
@@ -319,6 +368,7 @@ SYM(fillRange)(
 #undef SYM_Z
 #undef SYM_ZT
 #undef SYM_ZTA
+#undef SYM_ZTAG
 #undef _GLUE
 #undef GLUE
 #undef RENDER_Z
@@ -331,4 +381,7 @@ SYM(fillRange)(
 #endif
 #ifdef RENDER_A
     #undef RENDER_A
+#endif
+#ifdef RENDER_G
+    #undef RENDER_G
 #endif

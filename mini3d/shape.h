@@ -31,6 +31,14 @@ typedef struct
 	Point2D t2;
 	Point2D t3;
 	Point2D t4;
+#if ENABLE_TEXTURES_GREYSCALE
+	// Range from 0 to 1.
+	// If 0, then texture will 100% determined by texture and
+	// lighting will be ignored.
+	// If 1, face will be 100% determined by lighting and texture
+	// will be ignored.
+	float lighting;
+#endif
 } FaceTexture;
 #endif
 
@@ -71,6 +79,12 @@ void Shape3D_setFaceTextureMap(
 	Shape3D* shape, size_t face_idx,
 	Point2D t1, Point2D t2, Point2D t3, Point2D t4
 );
+
+#if ENABLE_TEXTURES_GREYSCALE
+void Shape3D_setFaceLighting(
+	Shape3D* shape, size_t face_idx, float lighting
+);
+#endif
 
 // Note: shape gains ownership of this bitmap.
 void Shape3D_setTexture(Shape3D* shape, LCDBitmap* texture);

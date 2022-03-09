@@ -153,6 +153,22 @@ void Shape3D_setFaceTextureMap(
 	}
 }
 
+#if ENABLE_TEXTURES_GREYSCALE
+void Shape3D_setFaceLighting(
+	Shape3D* shape, size_t face_idx, float lighting
+)
+{
+	if (!shape->texmap)
+		Shape3D_resize_texmap_buffer(shape);
+	if (face_idx < shape->nFaces)
+	{
+		FaceTexture* ft = &shape->texmap[face_idx];
+		ft->texture_enabled = (lighting < 1);
+		ft->lighting = lighting;
+	}
+}
+#endif
+
 // Note: shape gains ownership of this bitmap.
 void Shape3D_setTexture(Shape3D* shape, LCDBitmap* texture)
 {

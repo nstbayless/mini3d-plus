@@ -280,6 +280,13 @@ static ClippedFace3D* clipAllocate(ShapeInstance* shape, FaceInstance* face)
 	}
 	shape->clip[index].p1 = NULL;
 	shape->clip[index].src = face;
+	#if ENABLE_TEXTURES && ENABLE_TEXTURES_GREYSCALE
+	if (shape->prototype->texmap)
+	{
+		// copy lighting value from source texmap
+		shape->clip[index].tex.lighting = shape->prototype->texmap[face->org_face].lighting;
+	}
+	#endif
 	return &shape->clip[index];
 }
 
@@ -300,6 +307,11 @@ static void interpolatePoint2D(Point2D* out, Point2D* a, Point2D* b, float p)
 }
 #endif
 
+#if ENABLE_TEXTURES
+// cheap trick to check if the face is NULL given only the offset into its point
+#define POINT_FT_NOT_NULL(point) ((uintptr_t)(point) > offsetof(FaceTexture, t4))
+#endif
+
 // one point in front of camera, two points behind.
 static void calculateClipping_straddle12(
 	ClippedFace3D* clip, Point3D* a, Point3D* b1, Point3D* b2
@@ -313,7 +325,7 @@ static void calculateClipping_straddle12(
 	float pab2 = interpolatePointAtZClip(&clip->p4, a, b2);
 	
 	#if ENABLE_TEXTURES
-	if (ta)
+	if (POINT_FT_NOT_NULL(ta))
 	{
 		clip->tex.t1 = *ta;
 		interpolatePoint2D(&clip->tex.t2, ta, tb1, pab1);
@@ -345,7 +357,7 @@ static void calculateClipping_straddle21(
 	float pa1b = interpolatePointAtZClip(&clip->p4, a1, b);
 	
 	#if ENABLE_TEXTURES
-	if (ta1)
+	if (POINT_FT_NOT_NULL(ta1))
 	{
 		clip->tex.t4 = *ta1;
 		clip->tex.t1 = *ta2;
@@ -378,7 +390,7 @@ static void calculateClipping_straddle22(
 	float pa1b2 = interpolatePointAtZClip(&clip->p4, a1, b2);
 	
 	#if ENABLE_TEXTURES
-	if (ta1)
+	if (POINT_FT_NOT_NULL(ta1))
 	{
 		clip->tex.t4 = *ta1;
 		clip->tex.t1 = *ta2;
@@ -410,7 +422,7 @@ static void calculateClipping_straddle30(
 	clip->p4 = *a3;
 	
 	#if ENABLE_TEXTURES
-	if (ta1)
+	if (POINT_FT_NOT_NULL(ta1))
 	{
 		clip->tex.t1 = *ta1;
 		clip->tex.t2 = *ta2;
@@ -925,45 +937,6 @@ Scene3D_setCamera(Scene3D* scene, Point3D origin, Point3D lookAt, float scale, V
 	scene->root.needsUpdate = 1;
 }
 
-typedef uint8_t Pattern[8];
-
-static Pattern patterns[] =
-{
-	{ 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
-	{ 0x80, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00 },
-	{ 0x88, 0x00, 0x00, 0x00, 0x88, 0x00, 0x00, 0x00 },
-	{ 0x88, 0x00, 0x20, 0x00, 0x88, 0x00, 0x02, 0x00 },
-	{ 0x88, 0x00, 0x22, 0x00, 0x88, 0x00, 0x22, 0x00 },
-	{ 0xa8, 0x00, 0x22, 0x00, 0x8a, 0x00, 0x22, 0x00 },
-	{ 0xaa, 0x00, 0x22, 0x00, 0xaa, 0x00, 0x22, 0x00 },
-	{ 0xaa, 0x00, 0xa2, 0x00, 0xaa, 0x00, 0x2a, 0x00 },
-	{ 0xaa, 0x00, 0xaa, 0x00, 0xaa, 0x00, 0xaa, 0x00 },
-	{ 0xaa, 0x40, 0xaa, 0x00, 0xaa, 0x04, 0xaa, 0x00 },
-	{ 0xaa, 0x44, 0xaa, 0x00, 0xaa, 0x44, 0xaa, 0x00 },
-	{ 0xaa, 0x44, 0xaa, 0x10, 0xaa, 0x44, 0xaa, 0x01 },
-	{ 0xaa, 0x44, 0xaa, 0x11, 0xaa, 0x44, 0xaa, 0x11 },
-	{ 0xaa, 0x54, 0xaa, 0x11, 0xaa, 0x45, 0xaa, 0x11 },
-	{ 0xaa, 0x55, 0xaa, 0x11, 0xaa, 0x55, 0xaa, 0x11 },
-	{ 0xaa, 0x55, 0xaa, 0x51, 0xaa, 0x55, 0xaa, 0x15 },
-	{ 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55 },
-	{ 0xba, 0x55, 0xaa, 0x55, 0xab, 0x55, 0xaa, 0x55 },
-	{ 0xbb, 0x55, 0xaa, 0x55, 0xbb, 0x55, 0xaa, 0x55 },
-	{ 0xbb, 0x55, 0xea, 0x55, 0xbb, 0x55, 0xae, 0x55 },
-	{ 0xbb, 0x55, 0xee, 0x55, 0xbb, 0x55, 0xee, 0x55 },
-	{ 0xfb, 0x55, 0xee, 0x55, 0xbf, 0x55, 0xee, 0x55 },
-	{ 0xff, 0x55, 0xee, 0x55, 0xff, 0x55, 0xee, 0x55 },
-	{ 0xff, 0x55, 0xfe, 0x55, 0xff, 0x55, 0xef, 0x55 },
-	{ 0xff, 0x55, 0xff, 0x55, 0xff, 0x55, 0xff, 0x55 },
-	{ 0xff, 0x55, 0xff, 0xd5, 0xff, 0x55, 0xff, 0x5d },
-	{ 0xff, 0x55, 0xff, 0xdd, 0xff, 0x55, 0xff, 0xdd },
-	{ 0xff, 0x75, 0xff, 0xdd, 0xff, 0x57, 0xff, 0xdd },
-	{ 0xff, 0x77, 0xff, 0xdd, 0xff, 0x77, 0xff, 0xdd },
-	{ 0xff, 0x77, 0xff, 0xfd, 0xff, 0x77, 0xff, 0xdf },
-	{ 0xff, 0x77, 0xff, 0xff, 0xff, 0x77, 0xff, 0xff },
-	{ 0xff, 0xf7, 0xff, 0xff, 0xff, 0x7f, 0xff, 0xff },
-	{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }
-};
-
 static inline void
 drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride, FaceInstance* face
 	#if ENABLE_TEXTURES
@@ -1035,10 +1008,10 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 	// cheap gamma adjust
 	// v = v * v;
 
-	int vi = (int)(32.99 * v);
+	int vi = (int)((LIGHTING_PATTERN_COUNT - 0.01) * v);
 
-	if ( vi > 32 )
-		vi = 32;
+	if ( vi > (LIGHTING_PATTERN_COUNT - 1) )
+		vi = LIGHTING_PATTERN_COUNT - 1;
 	else if ( vi < 0 )
 		vi = 0;
 
@@ -1061,6 +1034,9 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 			{
 				fillQuad_zt(bitmap, rowstride, face->p1, face->p2, face->p3, face->p4,
 					shape->prototype->texture, ft->t1, ft->t2, ft->t3, ft->t4
+					#if ENABLE_TEXTURES_GREYSCALE
+					, v, ft->lighting
+					#endif
 				);
 			}
 			else
@@ -1081,6 +1057,9 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 			{
 				fillTriangle_zt(bitmap, rowstride, face->p1, face->p2, face->p3,
 					shape->prototype->texture, ft->t1, ft->t2, ft->t3
+					#if ENABLE_TEXTURES_GREYSCALE
+					, v, ft->lighting
+					#endif
 				);
 			}
 			else
@@ -1257,7 +1236,11 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 	{
 		#if ENABLE_TEXTURES
 		if (imposter->prototype->bitmap)
-			fillQuad_zt(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, imposter->prototype->bitmap, t1, t2, t3, t4);
+			fillQuad_zt(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, imposter->prototype->bitmap, t1, t2, t3, t4
+			#if ENABLE_TEXTURES_GREYSCALE
+			, 0, 0
+			#endif
+			);
 		else
 		#endif
 			fillQuad_zbuf(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, pattern);
