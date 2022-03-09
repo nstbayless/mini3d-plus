@@ -514,6 +514,7 @@ static int shape_addFace(lua_State* L)
 	return 1;
 }
 
+#if ENABLE_TEXTURES
 static int shape_setFaceTextureMap(lua_State* L)
 {
 	Shape3D* shape = getShape(1);
@@ -534,6 +535,7 @@ static int shape_setFaceTextureMap(lua_State* L)
 		
 	return 0;
 }
+#endif
 
 static int shape_setClosed(lua_State* L)
 {
