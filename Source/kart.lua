@@ -8,6 +8,7 @@ n = scene:getRootNode()
 n2 = n:addChildNode()
 terrain = lib3d.shape.new()
 terrain:setTexture("assets/kart.png")
+terrain:setClosed(1);
 
 local function swap(a, i, j)
     local tmp = a[i]
