@@ -18,6 +18,7 @@
 // intersecting geometry in the scene.
 #define ENABLE_ORDERING_TABLE 0
 
+// allow textured faces
 #define ENABLE_TEXTURES 1
 
 // allow textures to have non-opaque pixels
@@ -33,8 +34,18 @@
 // the camera.
 #define ENABLE_TEXTURES_PROJECTIVE 1
 
+// only applies if if ENABLE_TEXTURES_PROJECTIVE.
+// Only faces whose total z ratio (from closest to furthest point)
+// is less than this will have projective textures.
+// Comment this definition out entirely to use projective texture mapping
+// indiscriminately.
+#define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.76
+
+// clip faces which are partly behind the camera.
+// This allows rendering faces which are partly behind the camera.
 #define FACE_CLIPPING 1
 
+// clip faces that are closer than this
 #define CLIP_EPSILON 1.3f
 
 #include <stddef.h>

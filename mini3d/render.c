@@ -174,6 +174,55 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 	}
 }
 
+#if ENABLE_TEXTURES_PROJECTIVE
+	#if ENABLE_TEXTURES_MASK
+		#define RENDER_T
+		#define RENDER_A
+		#define RENDER_P
+		#include "render.inc"
+	#endif
+
+	#if ENABLE_TEXTURES >= 1
+		#define RENDER_T
+		#define RENDER_P
+		#include "render.inc"
+	#endif
+
+	#if ENABLE_Z_BUFFER
+		#if ENABLE_TEXTURES_GREYSCALE
+			#if ENABLE_TEXTURES_MASK
+				#define RENDER_Z
+				#define RENDER_T
+				#define RENDER_A
+				#define RENDER_G
+				#define RENDER_P
+				#include "render.inc"
+			#endif
+			
+			#define RENDER_Z
+			#define RENDER_T
+			#define RENDER_G
+			#define RENDER_P
+			#include "render.inc"
+		#endif
+		
+		#if ENABLE_TEXTURES_MASK
+			#define RENDER_Z
+			#define RENDER_T
+			#define RENDER_A
+			#define RENDER_P
+			#include "render.inc"
+		#endif
+
+		#if ENABLE_TEXTURES
+			#define RENDER_Z
+			#define RENDER_T
+			#define RENDER_P
+			#include "render.inc"
+		#endif
+	#endif
+#endif
+
 #if ENABLE_TEXTURES_MASK
 	#define RENDER_T
 	#define RENDER_A
@@ -620,10 +669,36 @@ LCDRowRange fillTriangle_zt(
 	float z3 = zscale / (p3->z + Z_BIAS);
 	
 	#if ENABLE_TEXTURES_PROJECTIVE
-	float w1 = 1 / p1->z;
-	float w2 = 1 / p2->z;
-	float w3 = 1 / p3->z;
+	float w1;
+	float w2;
+	float w3;
+	#ifndef TEXTURE_PROJECTIVE_RATIO_THRESHOLD
+	w1 = 1 / p1->z;
+	w2 = 1 / p2->z;
+	w3 = 1 / p3->z;
+	const int projective_texture_mapping = 1;
 	#else
+	float zmin = MIN(p1->z, MIN(p2->z, p3->z));
+	float zmax = MAX(p1->z, MAX(p2->z, p3->z));
+	int projective_texture_mapping;
+	if (zmin / zmax < TEXTURE_PROJECTIVE_RATIO_THRESHOLD)
+	{
+		projective_texture_mapping = 1;
+		w1 = 1 / p1->z;
+		w2 = 1 / p2->z;
+		w3 = 1 / p3->z;
+	}
+	else
+	{
+		projective_texture_mapping = 0;
+		w1 = 1;
+		w2 = 1;
+		w3 = 1;
+	}
+	#endif
+	
+	#else
+	const int projective_texture_mapping = 0;
 	const float w1 = 1;
 	const float w2 = 1;
 	const float w3 = 1;
@@ -640,7 +715,11 @@ LCDRowRange fillTriangle_zt(
 	float mu = u1 + (p2->y-p1->y) * (u3-u1) / (p3->y-p1->y);
 	float mv = v1 + (p2->y-p1->y) * (v3-v1) / (p3->y-p1->y);
 	#if ENABLE_TEXTURES_PROJECTIVE
-	float mw = w1 + (p2->y-p1->y) * (w3-w1) / (p3->y-p1->y);
+	float mw;
+	if (projective_texture_mapping)
+	{
+		mw = w1 + (p2->y-p1->y) * (w3-w1) / (p3->y-p1->y);
+	}
 	uvw_int2_t dwdx, dwdy;
 	#endif
 
@@ -656,8 +735,11 @@ LCDRowRange fillTriangle_zt(
 		dvdx = UVW_SLOPE(mv, mx, v2, p2->x);
 		dvdy = UVW_SLOPE(v1, p1->y, v3, p3->y);
 		#if ENABLE_TEXTURES_PROJECTIVE
-		dwdx = UVW_SLOPE(mw, mx, w2, p2->x);
-		dwdy = UVW_SLOPE(w1, p1->y, w3, p3->y);
+		if (projective_texture_mapping)
+		{
+			dwdx = UVW_SLOPE(mw, mx, w2, p2->x);
+			dwdy = UVW_SLOPE(w1, p1->y, w3, p3->y);
+		}
 		#endif
 	}
 	else
@@ -669,8 +751,11 @@ LCDRowRange fillTriangle_zt(
 		dvdx = UVW_SLOPE(v2, p2->x, mv, mx);
 		dvdy = UVW_SLOPE(v1, p1->y, v2, p2->y);
 		#if ENABLE_TEXTURES_PROJECTIVE
-		dwdx = UVW_SLOPE(w2, p2->x, mw, mx);
-		dwdy = UVW_SLOPE(w1, p1->y, w2, p2->y);
+		if (projective_texture_mapping)
+		{
+			dwdx = UVW_SLOPE(w2, p2->x, mw, mx);
+			dwdy = UVW_SLOPE(w1, p1->y, w2, p2->y);
+		}
 		#endif
 	}
 	
@@ -682,31 +767,42 @@ LCDRowRange fillTriangle_zt(
 	#endif
 	
 	#if ENABLE_TEXTURES_GREYSCALE
-	// map lighting to range 0-255
-	uint8_t u8lightp = CLAMP(0.0f, 1.0f, lighting_weight) * 255.99;
-	uint8_t u8light = CLAMP(0.0f, 1.0f, lighting) * (LIGHTING_PATTERN_COUNT - 0.001f);
-	// precompute
-	u8light = (((uint16_t)u8light * u8lightp) + 0x80) >> 8;
+		// map lighting to range 0-255
+		uint8_t u8lightp = CLAMP(0.0f, 1.0f, lighting_weight) * 255.99;
+		uint8_t u8light = CLAMP(0.0f, 1.0f, lighting) * (LIGHTING_PATTERN_COUNT - 0.001f);
+		// precompute
+		u8light = (((uint16_t)u8light * u8lightp) + 0x80) >> 8;
+		
+		#define fillRange_zt_or_ztg(fname, fname_g, ...) \
+			if (u8lightp == 0) \
+			{ \
+				fname(__VA_ARGS__); \
+			} \
+			else \
+			{ \
+				fname_g(__VA_ARGS__, u8light, 0xff - u8lightp); \
+			}
+	#else
+		#define fillRange_zt_or_ztg(fname, fname_g, ...) fname(__VA_ARGS__)
+	#endif
 	
-	#define fillRange_zt_or_ztg(...) \
-		if (u8lightp == 0) \
+	#if ENABLE_TEXTURES_PROJECTIVE
+		#define fillRange_zt_or_ztp(...) \
+		if (projective_texture_mapping) \
 		{ \
-			fillRange_zt(__VA_ARGS__); \
+			fillRange_zt_or_ztg(fillRange_ztp, fillRange_ztgp, __VA_ARGS__, &w, dwdy, dwdx); \
 		} \
 		else \
 		{ \
-			fillRange_ztg(__VA_ARGS__, u8light, 0xff - u8lightp); \
+			fillRange_zt_or_ztg(fillRange_zt, fillRange_ztg, __VA_ARGS__); \
 		}
 	#else
-	#define fillRange_zt_or_ztg fillRange_zt
+		#define fillRange_zt_or_ztp fillRange_ztg
 	#endif
 
 
-	fillRange_zt_or_ztg(
+	fillRange_zt_or_ztp(
 		bitmap, rowstride, p1->y, MIN(LCD_ROWS, p2->y), &x1, dx1, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
-		#if ENABLE_TEXTURES_PROJECTIVE
-			, &w, dwdy, dwdx
-		#endif
 	);
 	
 	int dx = slope(p2->x, p2->y, p3->x, p3->y);
@@ -721,24 +817,21 @@ LCDRowRange fillTriangle_zt(
 		u = u2 * ((uvw_int2_t)(1)<<UVW_SHIFT);
 		v = v2 * ((uvw_int2_t)(1)<<UVW_SHIFT);
 		#if ENABLE_TEXTURES_PROJECTIVE
-		dwdy = UVW_SLOPE(w2, p2->y, w3, p3->y);
-		w = w2 * ((uvw_int2_t)(1)<<UVW_SHIFT);
+		if (projective_texture_mapping)
+		{
+			dwdy = UVW_SLOPE(w2, p2->y, w3, p3->y);
+			w = w2 * ((uvw_int2_t)(1)<<UVW_SHIFT);
+		}
 		#endif
-		fillRange_zt_or_ztg(
+		fillRange_zt_or_ztp(
 			bitmap, rowstride, p2->y, endy, &x1, dx, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
-		#if ENABLE_TEXTURES_PROJECTIVE
-			, &w, dwdy, dwdx
-		#endif
 		);
 	}
 	else
 	{
 		x2 = p2->x * (1<<16);
-		fillRange_zt_or_ztg(
+		fillRange_zt_or_ztp(
 			bitmap, rowstride, p2->y, endy, &x1, dx1, &x2, dx, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
-			#if ENABLE_TEXTURES_PROJECTIVE
-				, &w, dwdy, dwdx
-			#endif
 		);
 	}
 		

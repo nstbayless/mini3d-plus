@@ -1,6 +1,8 @@
 // Z: zbuffer
 // T: texture
-// A: semitransparent textures
+// A: alpha / semitransparent / masked textures
+// G: greyscale textures (not strictly black/white) and/or lit textures
+// P: projective texture mapping
 
 #define _GLUE(a, b) a##b
 #define GLUE(a, b) _GLUE(a, b)
@@ -29,7 +31,13 @@
     #define SYM_ZTAG SYM_ZTA
 #endif
 
-#define SYM(x) GLUE(x, SYM_ZTAG)
+#ifdef RENDER_P
+    #define SYM_ZTAGP GLUE(SYM_ZTAG, p)
+#else
+    #define SYM_ZTAGP SYM_ZTAG
+#endif
+
+#define SYM(x) GLUE(x, SYM_ZTAGP)
 
 static void
 SYM(drawFragment)(
@@ -41,7 +49,7 @@ SYM(drawFragment)(
 	, uvw_int2_t u, uvw_int2_t dudx,
 	uvw_int2_t v, uvw_int2_t dvdx,
 	uint8_t* texdata, uint16_t texrowbytes, uint16_t texw, uint16_t texh
-#if ENABLE_TEXTURES_PROJECTIVE
+#ifdef RENDER_P
     , uvw_int2_t w, uvw_int2_t dwdx
 #endif
 #ifdef RENDER_G
@@ -67,7 +75,7 @@ SYM(drawFragment)(
         #ifdef RENDER_T
             u += -x * dudx;
             v += -x * dvdx;
-            #if ENABLE_TEXTURES_PROJECTIVE
+            #ifdef RENDER_P
                 w += -x * dwdx;
             #endif
         #endif
@@ -88,16 +96,16 @@ SYM(drawFragment)(
 	{
 		// read texture
         #ifdef RENDER_T
-        #if ENABLE_TEXTURES_PROJECTIVE
-        // |1 to prevent floating point division error
-        uint16_t ui = (u / (w|1)) % texw;
-		uint16_t vi = (v / (w|1)) % texh;
-        #else
-		uint16_t ui = (u >> UVW_SHIFT) % texw;
-		uint16_t vi = (v >> UVW_SHIFT) % texh;
-        #endif
-		uint16_t ti = (vi * texrowbytes) + ui / 8;
-		uint32_t texpix = (texdata[ti] << (ui % 8)) & 0x80; // either 0x80 or 0.
+            #ifdef RENDER_P
+                // |1 to prevent floating point division error
+                uint16_t ui = (u / (w|1)) % texw;
+                uint16_t vi = (v / (w|1)) % texh;
+            #else
+                uint16_t ui = (u >> UVW_SHIFT) % texw;
+                uint16_t vi = (v >> UVW_SHIFT) % texh;
+            #endif
+            uint16_t ti = (vi * texrowbytes) + ui / 8;
+            uint32_t texpix = (texdata[ti] << (ui % 8)) & 0x80; // either 0x80 or 0.
         #endif
         
         #ifdef RENDER_A
@@ -140,7 +148,7 @@ SYM(drawFragment)(
         #ifdef RENDER_T
             u += dudx;
             v += dvdx;
-            #if ENABLE_TEXTURES_PROJECTIVE
+            #ifdef RENDER_P
                 w += dwdx;
             #endif
         #endif
@@ -190,7 +198,7 @@ SYM(fillRange)(
 	, uvw_int2_t* up, uvw_int2_t dudy, uvw_int2_t dudx,
 	uvw_int2_t* vp, uvw_int2_t dvdy, uvw_int2_t dvdx,
 	LCDBitmap* texture
-    #if ENABLE_TEXTURES_PROJECTIVE
+    #ifdef RENDER_P
     , uvw_int2_t* wp, uvw_int2_t dwdy, uvw_int2_t dwdx
     #endif
     #ifdef RENDER_G
@@ -207,7 +215,7 @@ SYM(fillRange)(
     #endif
     #ifdef RENDER_T
         uvw_int2_t u = *up, v = *vp;
-        #if ENABLE_TEXTURES_PROJECTIVE
+        #ifdef RENDER_P
             uvw_int2_t w = *wp;
         #endif
     #endif
@@ -225,7 +233,7 @@ SYM(fillRange)(
         #ifdef RENDER_T
             *up = u + dy * dudy;
             *vp = v + dy * dvdy;
-            #if ENABLE_TEXTURES_PROJECTIVE
+            #ifdef RENDER_P
                 *wp = w + dy * dwdy;
             #endif
         #endif
@@ -242,7 +250,7 @@ SYM(fillRange)(
         #ifdef RENDER_T
 		    u += -y * dudy;
     		v += -y * dvdy;
-            #if ENABLE_TEXTURES_PROJECTIVE
+            #ifdef RENDER_P
                 w += -y * dwdy;
             #endif
         #endif
@@ -268,59 +276,79 @@ SYM(fillRange)(
 
 	while ( y < endy )
 	{	
+        #if defined(RENDER_P)
+            #define drawFragment_ztag_OPT_p drawFragment_ztagp
+            #define drawFragment_ztg_OPT_p drawFragment_ztgp
+            #define drawFragment_tag_OPT_p drawFragment_tagp
+            #define drawFragment_tg_OPT_p drawFragment_tgp
+            #define drawFragment_zta_OPT_p drawFragment_ztap
+            #define drawFragment_zt_OPT_p drawFragment_ztp
+            #define drawFragment_ta_OPT_p drawFragment_tap
+            #define drawFragment_t_OPT_p drawFragment_tp
+        #else
+            #define drawFragment_ztag_OPT_p drawFragment_ztag
+            #define drawFragment_ztg_OPT_p drawFragment_ztg
+            #define drawFragment_tag_OPT_p drawFragment_tag
+            #define drawFragment_tg_OPT_p drawFragment_tg
+            #define drawFragment_zta_OPT_p drawFragment_zta
+            #define drawFragment_zt_OPT_p drawFragment_zt
+            #define drawFragment_ta_OPT_p drawFragment_ta
+            #define drawFragment_t_OPT_p drawFragment_t
+        #endif
+        
         #if defined(RENDER_T) && defined(RENDER_Z) && defined(RENDER_G)
             #if ENABLE_TEXTURES_MASK
-            (hasmask ? drawFragment_ztag : drawFragment_ztg)(
+            (hasmask ? drawFragment_ztag_OPT_p : drawFragment_ztg_OPT_p)(
             #else
-            drawFragment_ztg(
+            drawFragment_ztg_OPT_p(
             #endif
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
                 z, dzdx,
                 u, dudx, v, dvdx,
                 bmdata, rowbytes, width, height
-                #if ENABLE_TEXTURES_PROJECTIVE
+                #ifdef RENDER_P
                     , w, dwdx
                 #endif
                 , light, texp, y % 8
             );
         #elif defined(RENDER_T) && !defined(RENDER_Z) && defined(RENDER_G)
             #if ENABLE_TEXTURES_MASK
-            (hasmask ? drawFragment_tag : drawFragment_tg)(
+            (hasmask ? drawFragment_tag_OPT_p : drawFragment_tg_OPT_p)(
             #else
             drawFragment_tg(
             #endif
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
                 u, dudx, v, dvdx,
                 bmdata, rowbytes, width, height
-                #if ENABLE_TEXTURES_PROJECTIVE
+                #ifdef RENDER_P
                     , w, dwdx
                 #endif
                 , light, texp, y%8
             );
         #elif defined(RENDER_T) && defined(RENDER_Z)
             #if ENABLE_TEXTURES_MASK
-            (hasmask ? drawFragment_zta : drawFragment_zt)(
+            (hasmask ? drawFragment_zta_OPT_p : drawFragment_zt_OPT_p)(
             #else
-            drawFragment_zt(
+            drawFragment_zt_OPT_p(
             #endif
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
                 z, dzdx,
                 u, dudx, v, dvdx,
                 bmdata, rowbytes, width, height
-                #if ENABLE_TEXTURES_PROJECTIVE
+                #ifdef RENDER_P
                     , w, dwdx
                 #endif
             );
         #elif defined(RENDER_T) && !defined(RENDER_Z)
             #if ENABLE_TEXTURES_MASK
-            (hasmask ? drawFragment_ta : drawFragment_t)(
+            (hasmask ? drawFragment_ta_OPT_p : drawFragment_t_OPT_p)(
             #else
-            drawFragment_t(
+            drawFragment_t_OPT_p(
             #endif
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
                 u, dudx, v, dvdx,
                 bmdata, rowbytes, width, height
-                #if ENABLE_TEXTURES_PROJECTIVE
+                #ifdef RENDER_P
                     , w, dwdx
                 #endif
             );
@@ -342,7 +370,7 @@ SYM(fillRange)(
         #ifdef RENDER_T
 		u += dudy;
 		v += dvdy;
-        #if ENABLE_TEXTURES_PROJECTIVE
+        #ifdef RENDER_P
             w += dwdy;
         #endif
         #endif
@@ -357,11 +385,21 @@ SYM(fillRange)(
     #ifdef RENDER_T
 	*up = u;
 	*vp = v;
-    #if ENABLE_TEXTURES_PROJECTIVE
+    #ifdef RENDER_P
         *wp = w;
     #endif
     #endif
 }
+
+#undef drawFragment_ztag_OPT_p
+#undef drawFragment_ztg_OPT_p
+#undef drawFragment_tag_OPT_p
+#undef drawFragment_tg_OPT_p
+#undef drawFragment_zta_OPT_p
+#undef drawFragment_zt_OPT_p
+#undef drawFragment_ta_OPT_p
+#undef drawFragment_t_OPT_p
+
 #endif
 
 #undef SYM
@@ -369,9 +407,9 @@ SYM(fillRange)(
 #undef SYM_ZT
 #undef SYM_ZTA
 #undef SYM_ZTAG
+#undef SYM_ZTAGP
 #undef _GLUE
 #undef GLUE
-#undef RENDER_Z
 
 #ifdef RENDER_Z
     #undef RENDER_Z
@@ -384,4 +422,7 @@ SYM(fillRange)(
 #endif
 #ifdef RENDER_G
     #undef RENDER_G
+#endif
+#ifdef RENDER_P
+    #undef RENDER_P
 #endif
