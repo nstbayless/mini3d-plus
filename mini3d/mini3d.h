@@ -48,6 +48,9 @@
 // clip faces that are closer than this
 #define CLIP_EPSILON 1.3f
 
+// do not render facse that face away from the camera.
+#define BACKFACE_CULLING 1
+
 #include <stddef.h>
 
 extern void* (*m3d_realloc)(void* ptr, size_t size);

@@ -968,7 +968,7 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 		 (y1 >= HEIGHT && y2 >= HEIGHT && y3 >= HEIGHT && (face->p4 == NULL || face->p4->y >= HEIGHT)) )
 		return;
 
-	if ( shape->prototype->isClosed )
+	if ( shape->prototype->isClosed || BACKFACE_CULLING )
 	{
 		// only render front side of faces
 
