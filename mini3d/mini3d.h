@@ -34,12 +34,15 @@
 // the camera.
 #define ENABLE_TEXTURES_PROJECTIVE 1
 
-// only applies if if ENABLE_TEXTURES_PROJECTIVE.
+// Only applies if if ENABLE_TEXTURES_PROJECTIVE.
+// Value in the range (0, 1).
 // Only faces whose total z ratio (from closest to furthest point)
 // is less than this will have projective textures.
+// If this value is too high, performance may drop.
+// If this value is too low, textures may "jump" slightly as they approach the camera.
 // Comment this definition out entirely to use projective texture mapping
 // indiscriminately.
-#define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.76
+#define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.8
 
 // clip faces which are partly behind the camera.
 // This allows rendering faces which are partly behind the camera.
