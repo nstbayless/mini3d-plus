@@ -1,3 +1,12 @@
+local cos <const> = math.cos
+local sin <const> = math.sin
+local exp <const> = math.exp
+local min <const> = math.min
+local max <const> = math.max
+local atan2 <const> = math.atan2
+local abs <const> = math.abs
+
+
 scene = lib3d.scene.new()
 scene:setCameraOrigin(0, 5, 6)
 scene:setLight(0, 0, 1)
@@ -65,13 +74,6 @@ kartNode = n:addChildNode()
 kartNode:addImposter(kartshape)
 
 local gfx = playdate.graphics
-
-local cos <const> = math.cos
-local sin <const> = math.sin
-local exp <const> = math.exp
-local min <const> = math.min
-local max <const> = math.max
-local atan2 <const> = math.atan2
 
 kart = {
     -- position and size

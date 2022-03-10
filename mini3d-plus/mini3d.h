@@ -32,6 +32,8 @@
 // if 1, textures are mapped with homogenous coordinates.
 // if 0, textures will be significantly warped as they approach
 // the camera.
+// This is quite expensive. Disable it if at all possible
+// (e.g. if textures are always far from the camera, or always orthogonal to it e.g. imposters)
 #define ENABLE_TEXTURES_PROJECTIVE 1
 
 // Only applies if if ENABLE_TEXTURES_PROJECTIVE.

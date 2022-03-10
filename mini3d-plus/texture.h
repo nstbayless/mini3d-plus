@@ -42,7 +42,7 @@ static inline LCDBitmap*
 Texture_getLCDBitmap(Texture* t)
 {
     // (~1 is actually not necessary)
-    return (void*)((uintptr_t)t & ~1);
+    return *(LCDBitmap**)((uintptr_t)t & ~1);
 }
 
 static inline GreyBitmap*
@@ -87,7 +87,7 @@ Texture_isGreyBitmap(Texture* t)
 static inline LCDBitmap*
 Texture_getLCDBitmap(Texture* t)
 {
-    return *(LCDBitmap*)t;
+    return *(LCDBitmap**)t;
 }
 
 static inline void

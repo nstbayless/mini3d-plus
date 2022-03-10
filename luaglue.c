@@ -535,6 +535,19 @@ static int shape_setFaceTextureMap(lua_State* L)
 		
 	return 0;
 }
+
+#if ENABLE_TEXTURES_GREYSCALE
+static int shape_setFaceLighting(lua_State* L)
+{
+	Shape3D* shape = getShape(1);
+	int face_idx = pd->lua->getArgInt(2);
+	float l = pd->lua->getArgFloat(3);
+	
+	Shape3D_setFaceLighting(shape, face_idx, l);
+		
+	return 0;
+}
+#endif
 #endif
 
 static int shape_setClosed(lua_State* L)
@@ -637,6 +650,7 @@ static const lua_reg lib3DShape[] =
 #if ENABLE_TEXTURES
 	{ "setTexture",		shape_setTexture },
 	{ "setFaceTextureMap", shape_setFaceTextureMap},
+	{ "setFaceLighting", shape_setFaceLighting},
 #endif
 #if ENABLE_ORDERING_TABLE
 	{ "setOrderTableSize", shape_setOrderTableSize, },

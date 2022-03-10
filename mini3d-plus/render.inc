@@ -322,11 +322,11 @@ SYM(fillRange)(
         #if defined(RENDER_T) && defined(RENDER_Z) && defined(RENDER_G)
             #if ENABLE_TEXTURES_MASK
             (hasmask
-                ? (fmt ? drawFragment_ztag_OPT_p : drawFragment_ztagl_OPT_p)
-                : (fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)
+                ? (!fmt ? drawFragment_ztag_OPT_p : drawFragment_ztagl_OPT_p)
+                : (!fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)
             )(
             #else
-            (fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)(
+            (!fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)(
             #endif
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
                 z, dzdx,
@@ -340,11 +340,11 @@ SYM(fillRange)(
         #elif defined(RENDER_T) && !defined(RENDER_Z) && defined(RENDER_G)
             #if ENABLE_TEXTURES_MASK
             (hasmask
-                ? (fmt ? drawFragment_tag_OPT_p : drawFragment_tagl_OPT_p)
-                : (fmt ? drawFragment_tg_OPT_p : drawFragment_tgl_OPT_p)
+                ? (!fmt ? drawFragment_tag_OPT_p : drawFragment_tagl_OPT_p)
+                : (!fmt ? drawFragment_tg_OPT_p : drawFragment_tgl_OPT_p)
             )(
             #else
-            (fmt ? drawFragment_tg_OPT_p : drawFragment_tgl_OPT_p)(
+            (!fmt ? drawFragment_tg_OPT_p : drawFragment_tgl_OPT_p)(
             #endif
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
                 u, dudx, v, dvdx,
