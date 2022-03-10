@@ -55,6 +55,9 @@ typedef struct
 	Texture* texture;
 	FaceTexture* texmap;
 #endif
+#if ENABLE_CUSTOM_PATTERNS
+	PatternTable* pattern;
+#endif
 	Point3D center; // used for z-sorting entire shapes at a time, and for collision detection
 	float colorBias;
 	
@@ -89,6 +92,12 @@ void Shape3D_setFaceLighting(
 
 // Note: shape gains ownership of this bitmap.
 void Shape3D_setTexture(Shape3D* shape, Texture* texture);
+#endif
+
+#if ENABLE_CUSTOM_PATTERNS
+// pattern must either be NULL,
+// or else it must be a refcounted pattern table created via Pattern_new().
+void Shape3D_setPattern(Shape3D* shape, PatternTable* pattern);
 #endif
 
 #if ENABLE_ORDERING_TABLE

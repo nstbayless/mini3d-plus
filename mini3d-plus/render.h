@@ -24,9 +24,6 @@ LCDRowRange drawLine(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, i
 LCDRowRange fillTriangle(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, uint8_t pattern[8]);
 LCDRowRange fillQuad(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4, uint8_t pattern[8]);
 
-typedef uint8_t Pattern[8];
-extern Pattern patterns[LIGHTING_PATTERN_COUNT];
-
 #if ENABLE_Z_BUFFER
 void resetZBuffer(float zmin);
 // intended for debugging.

@@ -9,6 +9,8 @@
 #ifndef mini3d_h
 #define mini3d_h
 
+#include <stdint.h>
+
 // Generally, you'd only need one of these, as they're two ways of solving the same problem:
 
 // The Z buffer is slower but more accurate, and can handle intersecting geometry.
@@ -16,7 +18,11 @@
 
 // The ordering table is faster but can produce glitches if the table is too small or there's
 // intersecting geometry in the scene.
+// This is not as well-supported as the z buffer. Some glitches may occur when using it.
 #define ENABLE_ORDERING_TABLE 0
+
+// allow shapes to have custom dither patterns (per-shape)
+#define ENABLE_CUSTOM_PATTERNS 0
 
 // allow textured faces
 #define ENABLE_TEXTURES 1
@@ -63,6 +69,11 @@ extern void* (*m3d_realloc)(void* ptr, size_t size);
 void mini3d_setRealloc(void* (*realloc)(void* ptr, size_t size));
 
 #define LIGHTING_PATTERN_COUNT 33
+typedef uint8_t Pattern[8];
+typedef Pattern PatternTable[LIGHTING_PATTERN_COUNT];
+
+// TODO:
+extern PatternTable patterns;
 
 #include <pd_api.h>
 PlaydateAPI* pd;

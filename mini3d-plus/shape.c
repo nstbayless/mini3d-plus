@@ -8,6 +8,7 @@
 
 #include "mini3d.h"
 #include "shape.h"
+#include "pattern.h"
 
 void Shape3D_init(Shape3D* shape)
 {
@@ -19,6 +20,9 @@ void Shape3D_init(Shape3D* shape)
 #if ENABLE_TEXTURES
 	shape->texture = NULL;
 	shape->texmap = NULL;
+#endif
+#if ENABLE_CUSTOM_PATTERNS
+	shape->pattern = &patterns;
 #endif
 	shape->center.x = 0;
 	shape->center.y = 0;
@@ -53,6 +57,10 @@ void Shape3D_release(Shape3D* shape)
 
 	if ( shape->texmap != NULL )
 		m3d_free(shape->texmap);
+	#endif
+	
+	#if ENABLE_CUSTOM_PATTERNS
+	Pattern_unref(shape->pattern);
 	#endif
 	
 	m3d_free(shape);
@@ -172,10 +180,19 @@ void Shape3D_setFaceLighting(
 // Note: shape gains ownership of this bitmap.
 void Shape3D_setTexture(Shape3D* shape, Texture* texture)
 {
-	Texture* prev = shape->texture;
-	shape->texture = texture;
 	if (texture) Texture_ref(texture);
-	if (prev) Texture_unref(prev);
+	Texture_unref(shape->texture);
+	shape->texture = texture;
+}
+#endif
+
+#if ENABLE_CUSTOM_PATTERNS
+void Shape3D_setPattern(Shape3D* shape, PatternTable* pattern)
+{
+	if (pattern == NULL) pattern = &patterns;
+	Pattern_ref(pattern);
+	Pattern_unref(shape->pattern);
+	shape->pattern = pattern;
 }
 #endif
 
