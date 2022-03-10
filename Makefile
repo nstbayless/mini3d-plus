@@ -24,6 +24,9 @@ SRC = \
 	mini3d-plus/imposter.c \
 	mini3d-plus/render.c \
 	mini3d-plus/collision.c \
+	mini3d-plus/texture.c \
+	mini3d-plus/image/miniz.c \
+	mini3d-plus/image/spng.c \
 	luaglue.c
 
 ASRC = setup.s

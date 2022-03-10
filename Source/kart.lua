@@ -4,10 +4,13 @@ scene:setLight(0, 0, 1)
 
 local rad_to_deg = 180 / math.pi
 
+print("FILES:")
+print(table.unpack(playdate.file.listFiles("assets/") ))
+
 n = scene:getRootNode()
 n2 = n:addChildNode()
 terrain = lib3d.shape.new()
-terrain:setTexture("assets/kart.png")
+terrain:setTexture("assets/texture.png.u", true)
 terrain:setClosed(1);
 
 local function swap(a, i, j)
@@ -81,7 +84,7 @@ kart = {
     -- velocity
     v = lib3d.point.new(),
     
-    gravity = -0.06,
+    gravity = lib3d.point.new(0, 0, -0.06),
     
     -- not the *literal* maximum speed.
     TOP_SPEED = 4,
@@ -106,7 +109,7 @@ kart = {
         local qspeed = min(self.TOP_SPEED, max(0.5, self.f:dot(self.v)) * 1.1)
         self.v.x = self.v.x * p + self.f.x * (1 - p) * qspeed
         self.v.y = self.v.y * p + self.f.y * (1 - p) * qspeed
-        self.v.z += self.gravity
+        self.v += self.gravity
         
         for i = 0,5 do
             collision, normal = terrain:collidesSphere(

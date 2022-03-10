@@ -101,6 +101,19 @@ static inline Vector3D Point3D_difference(Point3D* a, Point3D* b)
 	return (Vector3D){ .dx = b->x - a->x, .dy = b->y - a->y, .dz = b->z - a->z };
 }
 
+static inline Vector3D Vector3D_difference(Vector3D a, Vector3D b)
+{
+	return (Vector3D){ .dx = b.dx - a.dx, .dy = b.dy - a.dy, .dz = b.dz - a.dz };
+}
+
+static inline Vector3D Vector3D_reverse(Vector3D a)
+{
+	return (Vector3D){ .dx = -a.dx, .dy = -a.dy, .dz = -a.dz };
+}
+
+// gets vector displacement from the line to this point.
+Vector3D Point3D_line_difference(Point3D* a, Point3D* b, Point3D* p);
+
 static inline int Point3D_equal(Point3D* a, Point3D* b)
 {
 	if (a->x != b->x) return 0;

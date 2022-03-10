@@ -190,9 +190,24 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 				#define RENDER_T
 				#define RENDER_A
 				#define RENDER_G
+				#define RENDER_L
+				#define RENDER_P
+				#include "render.inc"
+				
+				#define RENDER_Z
+				#define RENDER_T
+				#define RENDER_A
+				#define RENDER_G
 				#define RENDER_P
 				#include "render.inc"
 			#endif
+			
+			#define RENDER_Z
+			#define RENDER_T
+			#define RENDER_G
+			#define RENDER_L
+			#define RENDER_P
+			#include "render.inc"
 			
 			#define RENDER_Z
 			#define RENDER_T
@@ -239,8 +254,21 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 			#define RENDER_T
 			#define RENDER_A
 			#define RENDER_G
+			#define RENDER_L
+			#include "render.inc"
+			
+			#define RENDER_Z
+			#define RENDER_T
+			#define RENDER_A
+			#define RENDER_G
 			#include "render.inc"
 		#endif
+		
+		#define RENDER_Z
+		#define RENDER_T
+		#define RENDER_G
+		#define RENDER_L
+		#include "render.inc"
 		
 		#define RENDER_Z
 		#define RENDER_T
@@ -631,7 +659,7 @@ LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point
 #if ENABLE_Z_BUFFER && ENABLE_TEXTURES
 LCDRowRange fillTriangle_zt(
 	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3,
-	LCDBitmap* texture, Point2D t1, Point2D t2, Point2D t3
+	Texture* texture, Point2D t1, Point2D t2, Point2D t3
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
 	#endif
@@ -644,8 +672,8 @@ LCDRowRange fillTriangle_zt(
 		return (LCDRowRange){ 0, 0 };
 	
 	// scale points to texture size
-	int width, height;
-	pd->graphics->getBitmapData(texture, &width, &height, NULL, NULL, NULL);
+	int width, height, fmt;
+	Texture_getData(texture, &width, &height, NULL, NULL, &fmt, NULL);
 	t1.x *= width; t1.y *= height;
 	t2.x *= width; t2.y *= height;
 	t3.x *= width; t3.y *= height;
@@ -769,7 +797,7 @@ LCDRowRange fillTriangle_zt(
 		u8light = (((uint16_t)u8light * u8lightp) + 0x80) >> 8;
 		
 		#define fillRange_zt_or_ztg(fname, fname_g, ...) \
-			if (u8lightp == 0) \
+			if (u8lightp == 0 && fmt == 0) \
 			{ \
 				fname(__VA_ARGS__); \
 			} \
@@ -853,7 +881,7 @@ LCDRowRange fillQuad_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* 
 #if ENABLE_Z_BUFFER && ENABLE_TEXTURES
 LCDRowRange fillQuad_zt(
 	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4,
-	LCDBitmap* texture, Point2D t1, Point2D t2, Point2D t3, Point2D t4
+	Texture* texture, Point2D t1, Point2D t2, Point2D t3, Point2D t4
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
 	#endif

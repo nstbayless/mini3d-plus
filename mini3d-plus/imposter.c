@@ -39,7 +39,7 @@ void Imposter3D_release(Imposter3D* imposter)
 	
 	#if ENABLE_TEXTURES
 	if (imposter->bitmap)
-		pd->graphics->freeBitmap(imposter->bitmap);
+		Texture_unref(imposter->bitmap);
 	#endif
 }
 
@@ -57,12 +57,11 @@ void Imposter3D_setRectangle(Imposter3D* imposter, float x1, float y1, float x2,
 }
 
 #if ENABLE_TEXTURES
-void Imposter3D_setBitmap(Imposter3D* imposter, LCDBitmap* bitmap)
+void Imposter3D_setBitmap(Imposter3D* imposter, Texture* bitmap)
 {
-	if (imposter->bitmap)
-	{
-		pd->graphics->freeBitmap(imposter->bitmap);
-	}
+	Texture* prev = imposter->bitmap;
 	imposter->bitmap = bitmap;
+	if (bitmap) Texture_ref(bitmap);
+	if (prev) Texture_unref(prev);
 }
 #endif

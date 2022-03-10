@@ -94,9 +94,6 @@ static int test_circle_line_segment(
     Point2D b
 )
 {
-    if (test_circle_point(circle, r, a)) return 1;
-    if (test_circle_point(circle, r, b)) return 1;
-    
     // inverse slope
     Vector2D inverse = {
         .dx = b.y - a.y,
@@ -137,6 +134,8 @@ test_sphere_triangle_bounding(
     Point3D* p3
 )
 {
+    // OPTIMIZE: this should be able to be done with zero branching.
+    
     Point3D min, max;
     min.x = MIN(MIN(p1->x, p2->x), p3->x) - r;
     min.y = MIN(MIN(p1->y, p2->y), p3->y) - r;
@@ -193,6 +192,10 @@ int test_sphere_triangle(
         {
             if (o_normal)
             {
+                if (plane_displacement < 0)
+                {
+                    n.dx *= -1; n.dy *= -1; n.dz *= -1;
+                }
                 memcpy(o_normal, &n, sizeof(Vector3D));
             }
             return 1;
@@ -204,32 +207,36 @@ int test_sphere_triangle(
         // check all three line segments
         if (test_circle_line_segment(qs, r, q1, q2))
         {
-            
-            if (o_normal)
-            {
-                // XXX
-                memcpy(o_normal, &n, sizeof(Vector3D));
-            }
+            if (o_normal) *o_normal = Vector3D_reverse(Vector3D_normalize(Point3D_line_difference(p1, p2, sphere)));
             return 1;
         }
         
         if (test_circle_line_segment(qs, r, q2, q3))
         {
-            if (o_normal)
-            {
-                // XXX
-                memcpy(o_normal, &n, sizeof(Vector3D));
-            }
+            if (o_normal) *o_normal = Vector3D_reverse(Vector3D_normalize(Point3D_line_difference(p2, p3, sphere)));
             return 1;
         }
         
         if (test_circle_line_segment(qs, r, q3, q1))
         {
-            if (o_normal)
-            {
-                // XXX
-                memcpy(o_normal, &n, sizeof(Vector3D));
-            }
+            if (o_normal) *o_normal = Vector3D_reverse(Vector3D_normalize(Point3D_line_difference(p3, p1, sphere)));
+            return 1;
+        }
+        
+        // check all three vertices
+        if (test_circle_point(qs, r, q1))
+        {
+            if (o_normal) *o_normal = Vector3D_reverse(Vector3D_normalize(Point3D_difference(p1, sphere)));
+            return 1;
+        }
+        if (test_circle_point(qs, r, q2))
+        {
+            if (o_normal) *o_normal = Vector3D_reverse(Vector3D_normalize(Point3D_difference(p2, sphere)));
+            return 1;
+        }
+        if (test_circle_point(qs, r, q3))
+        {
+            if (o_normal) *o_normal = Vector3D_reverse(Vector3D_normalize(Point3D_difference(p3, sphere)));
             return 1;
         }
     }

@@ -49,7 +49,7 @@ void Shape3D_release(Shape3D* shape)
 		
 	#if ENABLE_TEXTURES
 	if ( shape->texture != NULL )
-		pd->graphics->freeBitmap(shape->texture);
+		Texture_unref(shape->texture);
 
 	if ( shape->texmap != NULL )
 		m3d_free(shape->texmap);
@@ -170,13 +170,12 @@ void Shape3D_setFaceLighting(
 #endif
 
 // Note: shape gains ownership of this bitmap.
-void Shape3D_setTexture(Shape3D* shape, LCDBitmap* texture)
+void Shape3D_setTexture(Shape3D* shape, Texture* texture)
 {
-	if (shape->texture)
-	{
-		pd->graphics->freeBitmap(texture);
-	}
+	Texture* prev = shape->texture;
 	shape->texture = texture;
+	if (texture) Texture_ref(texture);
+	if (prev) Texture_unref(prev);
 }
 #endif
 

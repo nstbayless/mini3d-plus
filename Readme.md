@@ -10,6 +10,7 @@ If you are currently using or intend to use mini3d on the playdate, you can dire
 
 - Mesh clpping at camera (allows rendering faces which are partly behind the camera)
 - Textures
+  - To use greyscale textures, you must save the image with some extension other than `.png`, as the build script converts `.png` images into `.pdi`.
 - Collision detection
 
 ## Build Instructions
@@ -22,3 +23,13 @@ This will build and launch the kart example:
 make pdc
 PlaydateSimulator ./3DLibrary.pdx
 ```
+
+## Credits
+
+If you use mini3d+, please credit the following.
+
+- Dave Hayden (or Panic Software)
+- [spng](https://libspng.org/)
+- [miniz](https://github.com/richgel999/miniz)
+- NaOH
+- gingerbeardman (testing)

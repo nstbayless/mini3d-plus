@@ -11,6 +11,7 @@
 
 #include "mini3d.h"
 #include "3dmath.h"
+#include "texture.h"
 
 typedef struct
 {
@@ -51,7 +52,7 @@ typedef struct
 	Face3D* faces;
 #if ENABLE_TEXTURES
 	// iff NULL then this shape is not textured.
-	LCDBitmap* texture;
+	Texture* texture;
 	FaceTexture* texmap;
 #endif
 	Point3D center; // used for z-sorting entire shapes at a time, and for collision detection
@@ -87,7 +88,7 @@ void Shape3D_setFaceLighting(
 #endif
 
 // Note: shape gains ownership of this bitmap.
-void Shape3D_setTexture(Shape3D* shape, LCDBitmap* texture);
+void Shape3D_setTexture(Shape3D* shape, Texture* texture);
 #endif
 
 #if ENABLE_ORDERING_TABLE

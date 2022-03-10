@@ -582,10 +582,39 @@ collision_detected:
 }
 
 #if ENABLE_TEXTURES
+static Texture* getArgsTexture(lua_State* L, int primarg, int secarg, const char** outerr)
+{
+	#if ENABLE_TEXTURES_GREYSCALE
+	int b = pd->lua->getArgBool(3);
+	if (b && ENABLE_TEXTURES_GREYSCALE)
+	{
+		if (pd->lua->getArgType(2, NULL) == kTypeString)
+		{
+			return Texture_loadFromPath(pd->lua->getArgString(2), 1, outerr);
+		}
+		else
+		{
+			return Texture_fromLCDBitmap(getArgBitmap(2));
+		}
+	}
+	else
+	#endif
+	{
+		return Texture_fromLCDBitmap(getArgBitmap(2));
+	}
+}
+
 static int shape_setTexture(lua_State* L)
 {
 	Shape3D* shape = getShape(1);
-	Shape3D_setTexture(shape, getArgBitmap(2));
+	const char* outerr = NULL;
+	Texture* t = getArgsTexture(L, 2, 3, &outerr);
+	if (outerr != NULL)
+	{
+		pd->system->error("%s", outerr);
+		return 0;
+	}
+	Shape3D_setTexture(shape, t);
 	return 0;
 }
 #endif
@@ -658,7 +687,13 @@ static int imposter_setRectangle(lua_State* L)
 static int imposter_setBitmap(lua_State* L)
 {
 	Imposter3D* imposter = getImposter(1);
-	Imposter3D_setBitmap(imposter, getArgBitmap(2));
+	const char* outerr = NULL;
+	Texture* t = getArgsTexture(L, 2, 3, &outerr);
+	if (outerr != NULL)
+	{
+		pd->system->error("%s", outerr);
+	}
+	Imposter3D_setBitmap(imposter, t);
 	return 0;
 }
 #endif

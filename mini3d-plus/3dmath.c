@@ -99,3 +99,18 @@ float Matrix3D_getDeterminant(Matrix3D* m)
 		 - m->m[1][0] * m->m[0][1] * m->m[2][2]
 		 - m->m[0][0] * m->m[2][1] * m->m[1][2];
 }
+
+Vector3D Point3D_line_difference(Point3D* a, Point3D* b, Point3D* p)
+{
+	Vector3D line = Point3D_difference(a, b);
+	line = Vector3D_normalize(line);
+	Vector3D diff = Point3D_difference(a, p);
+	float dot = Vector3DDot(diff, line);
+	line.dx *= dot;
+	line.dy *= dot;
+	line.dz *= dot;
+	diff.dx -= line.dx;
+	diff.dy -= line.dx;
+	diff.dz -= line.dx;
+	return diff;
+}

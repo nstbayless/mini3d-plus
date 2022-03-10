@@ -2,6 +2,7 @@
 // T: texture
 // A: alpha / semitransparent / masked textures
 // G: greyscale textures (not strictly black/white) and/or lit textures
+// L: greyscale textures (requires G)
 // P: projective texture mapping
 
 #define _GLUE(a, b) a##b
@@ -37,7 +38,13 @@
     #define SYM_ZTAGP SYM_ZTAG
 #endif
 
-#define SYM(x) GLUE(x, SYM_ZTAGP)
+#ifdef RENDER_L
+    #define SYM_ZTAGPL GLUE(SYM_ZTAGP, l)
+#else
+    #define SYM_ZTAGPL SYM_ZTAGP
+#endif
+
+#define SYM(x) GLUE(x, SYM_ZTAGPL)
 
 static void
 SYM(drawFragment)(
@@ -88,7 +95,7 @@ SYM(drawFragment)(
     #ifdef RENDER_T
 	uint32_t color = 0;
     #endif
-    #ifdef RENDER_A
+    #if defined(RENDER_A) && !defined(RENDER_L)
     uint8_t* maskdata = texdata + (texh * texrowbytes);
     #endif
 
@@ -106,14 +113,23 @@ SYM(drawFragment)(
                 uint16_t ui = (u >> UV_SHIFT) % texw;
                 uint16_t vi = (v >> UV_SHIFT) % texh;
             #endif
+            #ifdef RENDER_L
+            uint16_t ti = (vi * texrowbytes) + ui;
+            uint32_t texpix = texdata[ti] & ~0x80; // mask out alpha bit
+            #else
             uint16_t ti = (vi * texrowbytes) + ui / 8;
             uint32_t texpix = (texdata[ti] << (ui % 8)) & 0x80; // either 0x80 or 0.
+            #endif
         #endif
         
         #ifdef RENDER_A
-        uint32_t alpha = (maskdata[ti] << (ui % 8)) & 0x80; // either 0x80 or 0.
+            #ifdef RENDER_L
+                uint32_t alpha = (texdata[ti]) & 0x80;
+            #else
+                uint32_t alpha = (maskdata[ti] << (ui % 8)) & 0x80; // either 0x80 or 0.
+            #endif
         #else
-        const uint8_t alpha = 1;
+            const uint8_t alpha = 1;
         #endif
         
         #ifdef RENDER_Z
@@ -131,7 +147,11 @@ SYM(drawFragment)(
         
         #ifdef RENDER_T
             #ifdef RENDER_G
-                uint8_t tex = texpix ? (LIGHTING_PATTERN_COUNT - 1) : 0;
+                #ifdef RENDER_L
+                    uint8_t tex = texpix;
+                #else
+                    uint8_t tex = texpix ? (LIGHTING_PATTERN_COUNT - 1) : 0;
+                #endif
                 uint8_t combined = ((uint16_t)tex * texp + 0x80) >> 8;
                 combined += light;
                 uint8_t pattern_byte = patterns[combined][pattern_y];
@@ -189,7 +209,7 @@ SYM(drawFragment)(
     }
 }
 
-#ifndef RENDER_A
+#if !defined(RENDER_A) && !defined(RENDER_L)
 static void 
 SYM(fillRange)(
 	uint8_t* bitmap, int rowstride, int y, int endy, int32_t* x1p, int32_t dx1, int32_t* x2p, int32_t dx2
@@ -199,7 +219,7 @@ SYM(fillRange)(
 #ifdef RENDER_T
 	, uvw_int2_t* up, uvw_int2_t dudy, uvw_int2_t dudx,
 	uvw_int2_t* vp, uvw_int2_t dvdy, uvw_int2_t dvdx,
-	LCDBitmap* texture
+	Texture* texture
     #ifdef RENDER_P
     , uvw_int2_t* wp, uvw_int2_t dwdy, uvw_int2_t dwdx
     #endif
@@ -262,18 +282,11 @@ SYM(fillRange)(
     #ifdef RENDER_T
         // read texture bitmap
         uint8_t* bmdata;
-        uint8_t* maskdata;
         int width, height;
         int rowbytes;
         int hasmask;
-        pd->graphics->getBitmapData(texture, &width, &height, &rowbytes, &hasmask, &bmdata);
-        
-        #if ENABLE_TEXTURES_MASK
-        if (hasmask)
-        {
-            maskdata = bmdata + height * rowbytes;
-        }
-        #endif
+        int fmt;
+        Texture_getData(texture, &width, &height, &rowbytes, &hasmask, &fmt, &bmdata);
     #endif
 
 	while ( y < endy )
@@ -283,6 +296,10 @@ SYM(fillRange)(
             #define drawFragment_ztg_OPT_p drawFragment_ztgp
             #define drawFragment_tag_OPT_p drawFragment_tagp
             #define drawFragment_tg_OPT_p drawFragment_tgp
+            #define drawFragment_ztagl_OPT_p drawFragment_ztagpl
+            #define drawFragment_ztgl_OPT_p drawFragment_ztgpl
+            #define drawFragment_tagl_OPT_p drawFragment_tagpl
+            #define drawFragment_tgl_OPT_p drawFragment_tgpl
             #define drawFragment_zta_OPT_p drawFragment_ztap
             #define drawFragment_zt_OPT_p drawFragment_ztp
             #define drawFragment_ta_OPT_p drawFragment_tap
@@ -292,6 +309,10 @@ SYM(fillRange)(
             #define drawFragment_ztg_OPT_p drawFragment_ztg
             #define drawFragment_tag_OPT_p drawFragment_tag
             #define drawFragment_tg_OPT_p drawFragment_tg
+            #define drawFragment_ztagl_OPT_p drawFragment_ztagl
+            #define drawFragment_ztgl_OPT_p drawFragment_ztgl
+            #define drawFragment_tagl_OPT_p drawFragment_tagl
+            #define drawFragment_tgl_OPT_p drawFragment_tgl
             #define drawFragment_zta_OPT_p drawFragment_zta
             #define drawFragment_zt_OPT_p drawFragment_zt
             #define drawFragment_ta_OPT_p drawFragment_ta
@@ -300,9 +321,12 @@ SYM(fillRange)(
         
         #if defined(RENDER_T) && defined(RENDER_Z) && defined(RENDER_G)
             #if ENABLE_TEXTURES_MASK
-            (hasmask ? drawFragment_ztag_OPT_p : drawFragment_ztg_OPT_p)(
+            (hasmask
+                ? (fmt ? drawFragment_ztag_OPT_p : drawFragment_ztagl_OPT_p)
+                : (fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)
+            )(
             #else
-            drawFragment_ztg_OPT_p(
+            (fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)(
             #endif
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
                 z, dzdx,
@@ -315,9 +339,12 @@ SYM(fillRange)(
             );
         #elif defined(RENDER_T) && !defined(RENDER_Z) && defined(RENDER_G)
             #if ENABLE_TEXTURES_MASK
-            (hasmask ? drawFragment_tag_OPT_p : drawFragment_tg_OPT_p)(
+            (hasmask
+                ? (fmt ? drawFragment_tag_OPT_p : drawFragment_tagl_OPT_p)
+                : (fmt ? drawFragment_tg_OPT_p : drawFragment_tgl_OPT_p)
+            )(
             #else
-            drawFragment_tg(
+            (fmt ? drawFragment_tg_OPT_p : drawFragment_tgl_OPT_p)(
             #endif
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
                 u, dudx, v, dvdx,
@@ -393,6 +420,10 @@ SYM(fillRange)(
     #endif
 }
 
+#undef drawFragment_ztagl_OPT_p
+#undef drawFragment_ztgl_OPT_p
+#undef drawFragment_tagl_OPT_p
+#undef drawFragment_tgl_OPT_p
 #undef drawFragment_ztag_OPT_p
 #undef drawFragment_ztg_OPT_p
 #undef drawFragment_tag_OPT_p
@@ -410,6 +441,7 @@ SYM(fillRange)(
 #undef SYM_ZTA
 #undef SYM_ZTAG
 #undef SYM_ZTAGP
+#undef SYM_ZTAGPL
 #undef _GLUE
 #undef GLUE
 
@@ -427,4 +459,7 @@ SYM(fillRange)(
 #endif
 #ifdef RENDER_P
     #undef RENDER_P
+#endif
+#ifdef RENDER_L
+    #undef RENDER_L
 #endif

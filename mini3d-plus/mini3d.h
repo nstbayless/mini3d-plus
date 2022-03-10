@@ -60,6 +60,8 @@ extern void* (*m3d_realloc)(void* ptr, size_t size);
 
 void mini3d_setRealloc(void* (*realloc)(void* ptr, size_t size));
 
+#define LIGHTING_PATTERN_COUNT 33
+
 #include <pd_api.h>
 PlaydateAPI* pd;
 
