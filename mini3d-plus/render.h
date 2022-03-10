@@ -38,6 +38,9 @@ LCDRowRange fillQuad_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* 
 
 LCDRowRange fillTriangle_zt(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3,
 	Texture* texture, Point2D t1, Point2D t2, Point2D t3
+	#if ENABLE_CUSTOM_PATTERNS
+	, PatternTable* pattern
+	#endif
 	#if ENABLE_TEXTURES_GREYSCALE
 	// if lighting_weight 0, then ignore light and only use texture
 	// if lighting weight 1, then ignore texture and only use light
@@ -48,6 +51,9 @@ LCDRowRange fillTriangle_zt(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D
 LCDRowRange fillQuad_zt(
 	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4,
 	Texture* texture, Point2D t1, Point2D t2, Point2D t3, Point2D t4
+	#if ENABLE_CUSTOM_PATTERNS
+	, PatternTable* pattern
+	#endif
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
 	#endif

@@ -56,6 +56,9 @@ SYM(drawFragment)(
 	, uvw_int2_t u, uvw_int2_t dudx,
 	uvw_int2_t v, uvw_int2_t dvdx,
 	uint8_t* texdata, uint16_t texrowbytes, uint16_t texw, uint16_t texh
+    #if ENABLE_CUSTOM_PATTERNS
+    , PatternTable* pattern
+    #endif
 #ifdef RENDER_P
     , uvw_int2_t w, uvw_int2_t dwdx
 #endif
@@ -154,7 +157,13 @@ SYM(drawFragment)(
                 #endif
                 uint8_t combined = ((uint16_t)tex * texp + 0x80) >> 8;
                 combined += light;
-                uint8_t pattern_byte = patterns[combined][pattern_y];
+                uint8_t pattern_byte = 
+                #if ENABLE_CUSTOM_PATTERNS
+                (*pattern)
+                #else
+                patterns
+                #endif
+                [combined][pattern_y];
                 texpix = (pattern_byte << (x % 8)) & 0x80;
             #endif
             
@@ -220,6 +229,9 @@ SYM(fillRange)(
 	, uvw_int2_t* up, uvw_int2_t dudy, uvw_int2_t dudx,
 	uvw_int2_t* vp, uvw_int2_t dvdy, uvw_int2_t dvdx,
 	Texture* texture
+    #if ENABLE_CUSTOM_PATTERNS
+    , PatternTable* pattern
+    #endif
     #ifdef RENDER_P
     , uvw_int2_t* wp, uvw_int2_t dwdy, uvw_int2_t dwdx
     #endif
@@ -332,6 +344,9 @@ SYM(fillRange)(
                 z, dzdx,
                 u, dudx, v, dvdx,
                 bmdata, rowbytes, width, height
+                #if ENABLE_CUSTOM_PATTERNS
+                , pattern
+                #endif
                 #ifdef RENDER_P
                     , w, dwdx
                 #endif
@@ -349,6 +364,9 @@ SYM(fillRange)(
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
                 u, dudx, v, dvdx,
                 bmdata, rowbytes, width, height
+                #if ENABLE_CUSTOM_PATTERNS
+                , pattern
+                #endif
                 #ifdef RENDER_P
                     , w, dwdx
                 #endif
@@ -364,6 +382,9 @@ SYM(fillRange)(
                 z, dzdx,
                 u, dudx, v, dvdx,
                 bmdata, rowbytes, width, height
+                #if ENABLE_CUSTOM_PATTERNS
+                , pattern
+                #endif
                 #ifdef RENDER_P
                     , w, dwdx
                 #endif
@@ -377,6 +398,9 @@ SYM(fillRange)(
                 (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
                 u, dudx, v, dvdx,
                 bmdata, rowbytes, width, height
+                #if ENABLE_CUSTOM_PATTERNS
+                , pattern
+                #endif
                 #ifdef RENDER_P
                     , w, dwdx
                 #endif

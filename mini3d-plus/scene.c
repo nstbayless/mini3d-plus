@@ -1034,6 +1034,9 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 			{
 				fillQuad_zt(bitmap, rowstride, face->p1, face->p2, face->p3, face->p4,
 					shape->prototype->texture, ft->t1, ft->t2, ft->t3, ft->t4
+					#if ENABLE_CUSTOM_PATTERNS
+					, shape->prototype->pattern
+					#endif
 					#if ENABLE_TEXTURES_GREYSCALE
 					, v, ft->lighting
 					#endif
@@ -1057,6 +1060,9 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 			{
 				fillTriangle_zt(bitmap, rowstride, face->p1, face->p2, face->p3,
 					shape->prototype->texture, ft->t1, ft->t2, ft->t3
+					#if ENABLE_CUSTOM_PATTERNS
+					, shape->prototype->pattern
+					#endif
 					#if ENABLE_TEXTURES_GREYSCALE
 					, v, ft->lighting
 					#endif
@@ -1237,6 +1243,9 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 		#if ENABLE_TEXTURES
 		if (imposter->prototype->bitmap)
 			fillQuad_zt(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, imposter->prototype->bitmap, t1, t2, t3, t4
+			#if ENABLE_CUSTOM_PATTERNS
+			, &patterns
+			#endif
 			#if ENABLE_TEXTURES_GREYSCALE
 			, 0, 0
 			#endif

@@ -14,6 +14,8 @@
 #include "imposter.h"
 #include "scene.h"
 #include "collision.h"
+#include "texture.h"
+#include "pattern.h"
 
 PlaydateAPI* pd = NULL;
 
@@ -24,6 +26,14 @@ static const lua_reg lib3DImposter[];
 static const lua_reg lib3DPoint[];
 static const lua_reg lib3DMatrix[];
 static const lua_reg lib3DMath[];
+
+#if ENABLE_TEXTURES
+static const lua_reg lib3DTexture[];
+#endif
+
+#if ENABLE_CUSTOM_PATTERNS
+static const lua_reg lib3DPattern[];
+#endif
 
 void register3D(PlaydateAPI* playdate)
 {
@@ -51,6 +61,16 @@ void register3D(PlaydateAPI* playdate)
 	
 	if ( !pd->lua->registerClass("lib3d.math", lib3DMath, NULL, 0, &err) )
 		pd->system->logToConsole("%s:%i: registerClass failed, %s", __FILE__, __LINE__, err);
+		
+	#if ENABLE_TEXTURES
+	if ( !pd->lua->registerClass("lib3d.texture", lib3DTexture, NULL, 0, &err) )
+		pd->system->logToConsole("%s:%i: registerClass failed, %s", __FILE__, __LINE__, err);
+	#endif
+		
+	#if ENABLE_CUSTOM_PATTERNS
+	if ( !pd->lua->registerClass("lib3d.pattern", lib3DPattern, NULL, 0, &err) )
+		pd->system->logToConsole("%s:%i: registerClass failed, %s", __FILE__, __LINE__, err);
+	#endif
 	
 	mini3d_setRealloc(pd->system->realloc);
 }
@@ -65,27 +85,6 @@ static void* get3DObj(int n, char* type)
 	return obj;
 }
 
-#if ENABLE_TEXTURES
-static LCDBitmap* getArgBitmap(int n)
-{
-	LCDBitmap* bitmap;
-	switch (pd->lua->getArgType(2, NULL))
-	{
-	case kTypeNil:
-		bitmap = NULL;
-		break;
-	case kTypeString:
-		bitmap = pd->graphics->loadBitmap(pd->lua->getArgString(2), NULL);
-		break;
-	default:
-		bitmap = pd->lua->getBitmap(2);
-		bitmap = pd->graphics->copyBitmap(bitmap);
-		break;
-	}
-	return bitmap;
-}
-#endif
-
 static Scene3D* getScene(int n)			{ return get3DObj(n, "lib3d.scene"); }
 static Scene3DNode* getSceneNode(int n)	{ return get3DObj(n, "lib3d.scenenode"); }
 static Shape3D* getShape(int n)			{ return get3DObj(n, "lib3d.shape"); }
@@ -93,6 +92,12 @@ static Imposter3D* getImposter(int n)	{ return get3DObj(n, "lib3d.imposter"); }
 static Point3D* getPoint(int n)			{ return get3DObj(n, "lib3d.point"); }
 static Vector3D* getVector(int n)	    { return get3DObj(n, "lib3d.point"); }
 static Matrix3D* getMatrix(int n)		{ return get3DObj(n, "lib3d.matrix"); }
+#if ENABLE_TEXTURES
+static Texture* getTexture(int n)		{ return get3DObj(n, "lib3d.texture"); }
+#endif
+#if ENABLE_CUSTOM_PATTERNS
+static PatternTable* getPatternTable(int n)		{ return get3DObj(n, "lib3d.pattern"); }
+#endif
 
 /// Scene
 
@@ -595,25 +600,37 @@ collision_detected:
 }
 
 #if ENABLE_TEXTURES
+// gets texture, and refs it too.
+// remember to Texture_unref if not null!
 static Texture* getArgsTexture(lua_State* L, int primarg, int secarg, const char** outerr)
 {
-	#if ENABLE_TEXTURES_GREYSCALE
-	int b = pd->lua->getArgBool(3);
-	if (b && ENABLE_TEXTURES_GREYSCALE)
+	int greyscale = pd->lua->getArgBool(secarg);
+	const char* typename;
+	switch (pd->lua->getArgType(primarg, &typename))
 	{
-		if (pd->lua->getArgType(2, NULL) == kTypeString)
+	case kTypeNil:
+		return NULL;
+	case kTypeString:
+		return Texture_loadFromPath(pd->lua->getArgString(primarg), greyscale, outerr);
+	case kTypeObject:
+		if (strcmp(typename, "lib3d.texture") == 0)
 		{
-			return Texture_loadFromPath(pd->lua->getArgString(2), 1, outerr);
+			return Texture_ref(getTexture(primarg));
 		}
-		else
+		else 
 		{
-			return Texture_fromLCDBitmap(getArgBitmap(2));
+			LCDBitmap* bitmap = pd->lua->getBitmap(primarg);
+			if (!bitmap)
+			{
+				*outerr = "must be either LCDBitmap or lib3d.texture";
+				return NULL;
+			}
+			
+			return Texture_fromLCDBitmap(bitmap);
 		}
-	}
-	else
-	#endif
-	{
-		return Texture_fromLCDBitmap(getArgBitmap(2));
+	default:
+		*outerr = "unrecognized texture type";
+		return NULL;
 	}
 }
 
@@ -628,6 +645,7 @@ static int shape_setTexture(lua_State* L)
 		return 0;
 	}
 	Shape3D_setTexture(shape, t);
+	if (t) Texture_unref(t);
 	return 0;
 }
 #endif
@@ -708,6 +726,7 @@ static int imposter_setBitmap(lua_State* L)
 		pd->system->error("%s", outerr);
 	}
 	Imposter3D_setBitmap(imposter, t);
+	if (t) Texture_unref(t);
 	return 0;
 }
 #endif
@@ -1010,3 +1029,53 @@ static const lua_reg lib3DMath[] =
 };
 
 
+#if ENABLE_TEXTURES
+static int texture_new(lua_State* L)
+{
+	const char* err;
+	Texture* t = getArgsTexture(L, 1, 2, &err);
+	if (!t)
+	{
+		pd->system->error("%s", err);
+	}
+	pd->lua->pushObject(t, "lib3d.texture", 0);
+	return 1;
+}
+
+static int texture_gc(lua_State* L)
+{
+	Texture* t = getTexture(1);
+	if (t) Texture_unref(t);
+	return 0;
+}
+
+static const lua_reg lib3DTexture[] =
+{
+	{"new", texture_new },
+	{"__gc", texture_gc },
+	{NULL, NULL}
+};
+#endif
+
+#if ENABLE_CUSTOM_PATTERNS
+static int pattern_new(lua_State* L)
+{
+	PatternTable* p = Pattern_new();
+	pd->lua->pushObject(p, "lib3d.pattern", 0);
+	return 1;
+}
+
+static int pattern_gc(lua_State* L)
+{
+	PatternTable* pt = getPatternTable(1);
+	if (pt) Pattern_unref(pt);
+	return 0;
+}
+
+static const lua_reg lib3DPattern[] =
+{
+	{"new", pattern_new },
+	{"__gc", pattern_gc },
+	{NULL, NULL}
+};
+#endif

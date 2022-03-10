@@ -8,6 +8,7 @@
 
 #include "mini3d.h"
 #include "imposter.h"
+#include "pattern.h"
 
 void Imposter3D_init(Imposter3D* imposter)
 {	
@@ -21,6 +22,10 @@ void Imposter3D_init(Imposter3D* imposter)
 	imposter->y2 = 1;
 	#if ENABLE_TEXTURES
 	imposter->bitmap = NULL;
+	
+	#if ENABLE_TEXTURES_GREYSCALE
+	imposter->lighting = 0;
+	#endif
 	#endif
 }
 
@@ -41,6 +46,10 @@ void Imposter3D_release(Imposter3D* imposter)
 	if (imposter->bitmap)
 		Texture_unref(imposter->bitmap);
 	#endif
+	
+	#if ENABLE_CUSTOM_PATTERNS
+	Pattern_unref(imposter->pattern);
+	#endif
 }
 
 void Imposter3D_setPosition(Imposter3D* imposter, Point3D* position)
@@ -59,9 +68,29 @@ void Imposter3D_setRectangle(Imposter3D* imposter, float x1, float y1, float x2,
 #if ENABLE_TEXTURES
 void Imposter3D_setBitmap(Imposter3D* imposter, Texture* bitmap)
 {
-	Texture* prev = imposter->bitmap;
-	imposter->bitmap = bitmap;
 	if (bitmap) Texture_ref(bitmap);
-	if (prev) Texture_unref(prev);
+	if (imposter->bitmap) Texture_unref(imposter->bitmap);
+	imposter->bitmap = bitmap;
+}
+
+#if ENABLE_TEXTURES_GREYSCALE
+void Imposter3D_setLighting(
+	Imposter3D* imposter, float lighting
+)
+{
+	imposter->lighting = lighting;
+}
+#endif
+#endif
+
+#if ENABLE_CUSTOM_PATTERNS
+// pattern must either be NULL,
+// or else it must be a refcounted pattern table created via Pattern_new().
+void Imposter_setPattern(Imposter3D* imposter, PatternTable* pattern)
+{
+	if (pattern == NULL) pattern = &patterns;
+	Pattern_ref(pattern);
+	Pattern_unref(imposter->pattern);
+	imposter->pattern = pattern;
 }
 #endif

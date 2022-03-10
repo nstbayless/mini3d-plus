@@ -181,7 +181,7 @@ void Shape3D_setFaceLighting(
 void Shape3D_setTexture(Shape3D* shape, Texture* texture)
 {
 	if (texture) Texture_ref(texture);
-	Texture_unref(shape->texture);
+	if (shape->texture) Texture_unref(shape->texture);
 	shape->texture = texture;
 }
 #endif

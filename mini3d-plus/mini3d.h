@@ -9,8 +9,6 @@
 #ifndef mini3d_h
 #define mini3d_h
 
-#include <stdint.h>
-
 // Generally, you'd only need one of these, as they're two ways of solving the same problem:
 
 // The Z buffer is slower but more accurate, and can handle intersecting geometry.
@@ -22,7 +20,7 @@
 #define ENABLE_ORDERING_TABLE 0
 
 // allow shapes to have custom dither patterns (per-shape)
-#define ENABLE_CUSTOM_PATTERNS 0
+#define ENABLE_CUSTOM_PATTERNS 1
 
 // allow textured faces
 #define ENABLE_TEXTURES 1
@@ -30,7 +28,7 @@
 // allow textures to have non-opaque pixels
 #define ENABLE_TEXTURES_MASK 1
 
-// allow textures to have lighting (optional) and intermediate colours (optional)
+// allow textures to have lighting (optional) and intermediate colours (optional).
 // all will be dithered on final render.
 #define ENABLE_TEXTURES_GREYSCALE 1
 
@@ -60,6 +58,7 @@
 #define CLIP_EPSILON 1.3f
 
 #include <stddef.h>
+#include <stdint.h>
 
 extern void* (*m3d_realloc)(void* ptr, size_t size);
 

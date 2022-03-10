@@ -13,9 +13,6 @@ scene:setLight(0, 0, 1)
 
 local rad_to_deg = 180 / math.pi
 
-print("FILES:")
-print(table.unpack(playdate.file.listFiles("assets/") ))
-
 n = scene:getRootNode()
 n2 = n:addChildNode()
 terrain = lib3d.shape.new()

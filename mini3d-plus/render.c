@@ -660,6 +660,9 @@ LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point
 LCDRowRange fillTriangle_zt(
 	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3,
 	Texture* texture, Point2D t1, Point2D t2, Point2D t3
+	#if ENABLE_CUSTOM_PATTERNS
+	, PatternTable* pattern
+	#endif
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
 	#endif
@@ -826,6 +829,9 @@ LCDRowRange fillTriangle_zt(
 
 	fillRange_zt_or_ztp(
 		bitmap, rowstride, p1->y, MIN(LCD_ROWS, p2->y), &x1, dx1, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
+		#if ENABLE_CUSTOM_PATTERNS
+		, pattern
+		#endif
 	);
 	
 	int dx = slope(p2->x, p2->y, p3->x, p3->y, 16);
@@ -848,6 +854,9 @@ LCDRowRange fillTriangle_zt(
 		#endif
 		fillRange_zt_or_ztp(
 			bitmap, rowstride, p2->y, endy, &x1, dx, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
+			#if ENABLE_CUSTOM_PATTERNS
+			, pattern
+			#endif
 		);
 	}
 	else
@@ -855,6 +864,9 @@ LCDRowRange fillTriangle_zt(
 		x2 = p2->x * (1<<16);
 		fillRange_zt_or_ztp(
 			bitmap, rowstride, p2->y, endy, &x1, dx1, &x2, dx, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
+			#if ENABLE_CUSTOM_PATTERNS
+			, pattern
+			#endif
 		);
 	}
 		
@@ -882,6 +894,9 @@ LCDRowRange fillQuad_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* 
 LCDRowRange fillQuad_zt(
 	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4,
 	Texture* texture, Point2D t1, Point2D t2, Point2D t3, Point2D t4
+	#if ENABLE_CUSTOM_PATTERNS
+	, PatternTable* pattern
+	#endif
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
 	#endif
@@ -890,12 +905,18 @@ LCDRowRange fillQuad_zt(
 	// XXX - implement with 3 fillrange_z() calls
 	fillTriangle_zt(
 		bitmap, rowstride, p1, p2, p3, texture, t1, t2, t3
+		#if ENABLE_CUSTOM_PATTERNS
+		, pattern
+		#endif
 		#if ENABLE_TEXTURES_GREYSCALE
 		, lighting, lighting_weight
 		#endif
 	);
 	return fillTriangle_zt(
 		bitmap, rowstride, p1, p3, p4, texture, t1, t3, t4
+		#if ENABLE_CUSTOM_PATTERNS
+		, pattern
+		#endif
 		#if ENABLE_TEXTURES_GREYSCALE
 		, lighting, lighting_weight
 		#endif

@@ -7,7 +7,8 @@ uint32_t* Pattern_refcount(PatternTable* p)
     return (uint32_t*)p-1;
 }
 
-static inline Pattern_free(PatternTable* p)
+static inline void
+Pattern_free(PatternTable* p)
 {
     if (p != &patterns)
     {
@@ -28,6 +29,7 @@ PatternTable* Pattern_ref(PatternTable* p)
     {
         (*Pattern_refcount(p))++;
     }
+    return p;
 }
 
 void Pattern_unref(PatternTable* p)
