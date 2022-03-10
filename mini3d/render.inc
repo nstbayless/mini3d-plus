@@ -98,11 +98,13 @@ SYM(drawFragment)(
         #ifdef RENDER_T
             #ifdef RENDER_P
                 // |1 to prevent floating point division error
-                uint16_t ui = (u / (w|1)) % texw;
-                uint16_t vi = (v / (w|1)) % texh;
+                uint16_t ui = (u / ((w >> MAX(0, W_SHIFT - UV_SHIFT))|1)) >> MAX(0, UV_SHIFT - W_SHIFT);
+                ui %= texw; // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
+                uint16_t vi = (v / ((w >> MAX(0, W_SHIFT - UV_SHIFT))|1)) >> MAX(0, UV_SHIFT - W_SHIFT);
+                vi %= texh; // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
             #else
-                uint16_t ui = (u >> UVW_SHIFT) % texw;
-                uint16_t vi = (v >> UVW_SHIFT) % texh;
+                uint16_t ui = (u >> UV_SHIFT) % texw;
+                uint16_t vi = (v >> UV_SHIFT) % texh;
             #endif
             uint16_t ti = (vi * texrowbytes) + ui / 8;
             uint32_t texpix = (texdata[ti] << (ui % 8)) & 0x80; // either 0x80 or 0.

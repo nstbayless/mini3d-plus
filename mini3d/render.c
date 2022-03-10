@@ -30,17 +30,12 @@
 #define CLAMP(a, b, x) (MAX(a, MIN(b, x)))
 #endif
 
-#if ENABLE_TEXTURES_PROJECTIVE
-	typedef int32_t uvw_int_t;
-	typedef int64_t uvw_int2_t;
-	#define UVW_SHIFT 28
-	#define UVW_SLOPE slope64
-#else
-	typedef int16_t uvw_int_t;
-	typedef int32_t uvw_int2_t;
-	#define UVW_SHIFT 16
-	#define UVW_SLOPE slope
-#endif
+typedef int16_t uvw_int_t;
+typedef int32_t uvw_int2_t;
+#define UV_SHIFT 21
+#define W_SHIFT 28
+#define UV_SLOPE slope
+#define W_SLOPE slope
 
 Pattern patterns[LIGHTING_PATTERN_COUNT] =
 {
@@ -268,26 +263,26 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 #endif
 
 
-static inline int32_t slope(float x1, float y1, float x2, float y2)
+static inline int32_t slope(float x1, float y1, float x2, float y2, const int shift)
 {
 	float dx = x2-x1;
 	float dy = y2-y1;
 	
 	if ( dy < 1 )
-		return dx * (1<<16);
+		return dx * (1<<shift);
 	else
-		return dx / dy * (1<<16);
+		return dx / dy * (1<<shift);
 }
 
-static inline int64_t slope64(float x1, float y1, float x2, float y2)
+static inline int64_t slope64(float x1, float y1, float x2, float y2, const int shift)
 {
 	float dx = x2-x1;
 	float dy = y2-y1;
 	
 	if ( dy < 1 )
-		return dx * ((int64_t)(1)<<28);
+		return dx * ((int64_t)(1)<<shift);
 	else
-		return dx / dy * ((int64_t)(1)<<28);
+		return dx / dy * ((int64_t)(1)<<shift);
 }
 
 #if ENABLE_Z_BUFFER
@@ -308,7 +303,7 @@ drawLine_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, int thic
 		return (LCDRowRange){ 0, 0 };
 	
 	int32_t x = p1->x * (1<<16);
-	int32_t dx = slope(p1->x, p1->y, p2->x, p2->y + 1);
+	int32_t dx = slope(p1->x, p1->y, p2->x, p2->y + 1, 16);
 	
 	// move lines a bit forward so they don't get buried in solid geometry
 	float z1 = zscale / (p1->z + Z_BIAS) + 256;
@@ -317,8 +312,8 @@ drawLine_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, int thic
 	if ( z1 > 65535 ) z1 = 65535;
 	if ( z2 > 65535 ) z2 = 65535;
 
-	int32_t dzdy = slope(z1, p1->y, z2, p2->y + 1);
-	int32_t dzdx = slope(z1, p1->x, z2, p2->x);
+	int32_t dzdy = slope(z1, p1->y, z2, p2->y + 1, 16);
+	int32_t dzdx = slope(z1, p1->x, z2, p2->x, 16);
 
 	uint32_t z = z1 * (1<<16);
 
@@ -373,7 +368,7 @@ drawLine(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, int thick, ui
 		return (LCDRowRange){ 0, 0 };
 	
 	int32_t x = p1->x * (1<<16);
-	int32_t dx = slope(p1->x, p1->y, p2->x, p2->y);
+	int32_t dx = slope(p1->x, p1->y, p2->x, p2->y, 16);
 	
 	if ( y < 0 )
 	{
@@ -546,15 +541,15 @@ LCDRowRange fillTriangle(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p
 	int32_t x1 = p1->x * (1<<16);
 	int32_t x2 = x1;
 	
-	int32_t sb = slope(p1->x, p1->y, p2->x, p2->y);
-	int32_t sc = slope(p1->x, p1->y, p3->x, p3->y);
+	int32_t sb = slope(p1->x, p1->y, p2->x, p2->y, 16);
+	int32_t sc = slope(p1->x, p1->y, p3->x, p3->y, 16);
 
 	int32_t dx1 = MIN(sb, sc);
 	int32_t dx2 = MAX(sb, sc);
 	
 	fillRange(bitmap, rowstride, p1->y, MIN(LCD_ROWS, p2->y), &x1, dx1, &x2, dx2, pattern);
 	
-	int dx = slope(p2->x, p2->y, p3->x, p3->y);
+	int dx = slope(p2->x, p2->y, p3->x, p3->y, 16);
 	
 	if ( sb < sc )
 	{
@@ -584,8 +579,8 @@ LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point
 	int32_t x1 = p1->x * (1<<16);
 	int32_t x2 = x1;
 
-	int32_t sb = slope(p1->x, p1->y, p2->x, p2->y);
-	int32_t sc = slope(p1->x, p1->y, p3->x, p3->y);
+	int32_t sb = slope(p1->x, p1->y, p2->x, p2->y, 16);
+	int32_t sc = slope(p1->x, p1->y, p3->x, p3->y, 16);
 
 	int32_t dx1 = MIN(sb,sc);
 	int32_t dx2 = MAX(sb,sc);
@@ -601,24 +596,24 @@ LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point
 
 	if ( sc < sb )
 	{
-		dzdx = slope(mz, mx, z2, p2->x);
-		dzdy = slope(z1, p1->y, z3, p3->y);
+		dzdx = slope(mz, mx, z2, p2->x, 16);
+		dzdy = slope(z1, p1->y, z3, p3->y, 16);
 	}
 	else
 	{
-		dzdx = slope(z2, p2->x, mz, mx);
-		dzdy = slope(z1, p1->y, z2, p2->y);
+		dzdx = slope(z2, p2->x, mz, mx, 16);
+		dzdy = slope(z1, p1->y, z2, p2->y, 16);
 	}
 	
 	uint32_t z = z1 * (1<<16);
 
 	fillRange_z(bitmap, rowstride, p1->y, MIN(LCD_ROWS, p2->y), &x1, dx1, &x2, dx2, &z, dzdy, dzdx, pattern);
 	
-	int dx = slope(p2->x, p2->y, p3->x, p3->y);
+	int dx = slope(p2->x, p2->y, p3->x, p3->y, 16);
 
 	if ( sb < sc )
 	{
-		dzdy = slope(z2, p2->y, z3, p3->y);
+		dzdy = slope(z2, p2->y, z3, p3->y, 16);
 		x1 = p2->x * (1<<16);
 		z = z2 * (1<<16);
 		fillRange_z(bitmap, rowstride, p2->y, endy, &x1, dx, &x2, dx2, &z, dzdy, dzdx, pattern);
@@ -658,8 +653,8 @@ LCDRowRange fillTriangle_zt(
 	int32_t x1 = p1->x * (1<<16);
 	int32_t x2 = x1;
 
-	int32_t sb = slope(p1->x, p1->y, p2->x, p2->y);
-	int32_t sc = slope(p1->x, p1->y, p3->x, p3->y);
+	int32_t sb = slope(p1->x, p1->y, p2->x, p2->y, 16);
+	int32_t sc = slope(p1->x, p1->y, p3->x, p3->y, 16);
 
 	int32_t dx1 = MIN(sb,sc);
 	int32_t dx2 = MAX(sb,sc);
@@ -728,42 +723,42 @@ LCDRowRange fillTriangle_zt(
 
 	if ( sc < sb )
 	{
-		dzdx = slope(mz, mx, z2, p2->x);
-		dzdy = slope(z1, p1->y, z3, p3->y);
-		dudx = UVW_SLOPE(mu, mx, u2, p2->x);
-		dudy = UVW_SLOPE(u1, p1->y, u3, p3->y);
-		dvdx = UVW_SLOPE(mv, mx, v2, p2->x);
-		dvdy = UVW_SLOPE(v1, p1->y, v3, p3->y);
+		dzdx = slope(mz, mx, z2, p2->x, 16);
+		dzdy = slope(z1, p1->y, z3, p3->y, 16);
+		dudx = UV_SLOPE(mu, mx, u2, p2->x, UV_SHIFT);
+		dudy = UV_SLOPE(u1, p1->y, u3, p3->y, UV_SHIFT);
+		dvdx = UV_SLOPE(mv, mx, v2, p2->x, UV_SHIFT);
+		dvdy = UV_SLOPE(v1, p1->y, v3, p3->y, UV_SHIFT);
 		#if ENABLE_TEXTURES_PROJECTIVE
 		if (projective_texture_mapping)
 		{
-			dwdx = UVW_SLOPE(mw, mx, w2, p2->x);
-			dwdy = UVW_SLOPE(w1, p1->y, w3, p3->y);
+			dwdx = W_SLOPE(mw, mx, w2, p2->x, W_SHIFT);
+			dwdy = W_SLOPE(w1, p1->y, w3, p3->y, W_SHIFT);
 		}
 		#endif
 	}
 	else
 	{
-		dzdx = slope(z2, p2->x, mz, mx);
-		dzdy = slope(z1, p1->y, z2, p2->y);
-		dudx = UVW_SLOPE(u2, p2->x, mu, mx);
-		dudy = UVW_SLOPE(u1, p1->y, u2, p2->y);
-		dvdx = UVW_SLOPE(v2, p2->x, mv, mx);
-		dvdy = UVW_SLOPE(v1, p1->y, v2, p2->y);
+		dzdx = slope(z2, p2->x, mz, mx, 16);
+		dzdy = slope(z1, p1->y, z2, p2->y, 16);
+		dudx = UV_SLOPE(u2, p2->x, mu, mx, UV_SHIFT);
+		dudy = UV_SLOPE(u1, p1->y, u2, p2->y, UV_SHIFT);
+		dvdx = UV_SLOPE(v2, p2->x, mv, mx, UV_SHIFT);
+		dvdy = UV_SLOPE(v1, p1->y, v2, p2->y, UV_SHIFT);
 		#if ENABLE_TEXTURES_PROJECTIVE
 		if (projective_texture_mapping)
 		{
-			dwdx = UVW_SLOPE(w2, p2->x, mw, mx);
-			dwdy = UVW_SLOPE(w1, p1->y, w2, p2->y);
+			dwdx = W_SLOPE(w2, p2->x, mw, mx, W_SHIFT);
+			dwdy = W_SLOPE(w1, p1->y, w2, p2->y, W_SHIFT);
 		}
 		#endif
 	}
 	
 	uint32_t z = z1 * (1<<16);
-	uvw_int2_t u = u1 * ((uvw_int2_t)(1)<<UVW_SHIFT);
-	uvw_int2_t v = v1 * ((uvw_int2_t)(1)<<UVW_SHIFT);
+	uvw_int2_t u = u1 * ((uvw_int2_t)(1)<<UV_SHIFT);
+	uvw_int2_t v = v1 * ((uvw_int2_t)(1)<<UV_SHIFT);
 	#if ENABLE_TEXTURES_PROJECTIVE
-	uvw_int2_t w = w1 * ((uvw_int2_t)(1)<<UVW_SHIFT);
+	uvw_int2_t w = w1 * ((uvw_int2_t)(1)<<W_SHIFT);
 	#endif
 	
 	#if ENABLE_TEXTURES_GREYSCALE
@@ -805,22 +800,22 @@ LCDRowRange fillTriangle_zt(
 		bitmap, rowstride, p1->y, MIN(LCD_ROWS, p2->y), &x1, dx1, &x2, dx2, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
 	);
 	
-	int dx = slope(p2->x, p2->y, p3->x, p3->y);
+	int dx = slope(p2->x, p2->y, p3->x, p3->y, 16);
 
 	if ( sb < sc )
 	{
-		dzdy = slope(z2, p2->y, z3, p3->y);
-		dudy = UVW_SLOPE(u2, p2->y, u3, p3->y);
-		dvdy = UVW_SLOPE(v2, p2->y, v3, p3->y);
+		dzdy = slope(z2, p2->y, z3, p3->y, 16);
+		dudy = UV_SLOPE(u2, p2->y, u3, p3->y, UV_SHIFT);
+		dvdy = UV_SLOPE(v2, p2->y, v3, p3->y, UV_SHIFT);
 		x1 = p2->x * (1<<16);
 		z = z2 * (1<<16);
-		u = u2 * ((uvw_int2_t)(1)<<UVW_SHIFT);
-		v = v2 * ((uvw_int2_t)(1)<<UVW_SHIFT);
+		u = u2 * ((uvw_int2_t)(1)<<UV_SHIFT);
+		v = v2 * ((uvw_int2_t)(1)<<UV_SHIFT);
 		#if ENABLE_TEXTURES_PROJECTIVE
 		if (projective_texture_mapping)
 		{
-			dwdy = UVW_SLOPE(w2, p2->y, w3, p3->y);
-			w = w2 * ((uvw_int2_t)(1)<<UVW_SHIFT);
+			dwdy = UV_SLOPE(w2, p2->y, w3, p3->y, W_SHIFT);
+			w = w2 * ((uvw_int2_t)(1)<<W_SHIFT);
 		}
 		#endif
 		fillRange_zt_or_ztp(
