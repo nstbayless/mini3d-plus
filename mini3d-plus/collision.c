@@ -1,13 +1,23 @@
 #include "3dmath.h"
 #include "mini3d.h"
 
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC optimize ("O3")
+#endif
+
+#if !defined(MIN)
+#define MIN(a, b) (((a)<(b))?(a):(b))
+#endif
+
+#if !defined(MAX)
+#define MAX(a, b) (((a)>(b))?(a):(b))
+#endif
+
 typedef struct Vector2D
 {
     float dx;
     float dy;
 } Vector2D;
-
-//#define PDLOG
 
 static Point2D project_3d_to_2d_basis(
     Point3D* p,
@@ -84,13 +94,6 @@ static int test_circle_line_segment(
     Point2D b
 )
 {
-    #ifdef PDLOG
-    pd->system->logToConsole("xc: %.2f, yc: %.2f", circle.x, circle.y);
-    pd->system->logToConsole("r: %.2f", r);
-    pd->system->logToConsole("ax: %.2f, ay: %.2f", a.x, a.y);
-    pd->system->logToConsole("bx: %.2f, by: %.2f", b.x, b.y);
-    #endif
-    
     if (test_circle_point(circle, r, a)) return 1;
     if (test_circle_point(circle, r, b)) return 1;
     
@@ -108,10 +111,6 @@ static int test_circle_line_segment(
     
     float line_displacement = vector2DDot(inverse, v);
     
-    #ifdef PDLOG
-    pd->system->logToConsole("displacement: %.2f", line_displacement);
-    #endif
-    
     // check that the circle is close enough to the infinite line
     if (line_displacement < r && line_displacement > -r)
     {
@@ -119,9 +118,6 @@ static int test_circle_line_segment(
         
         // get projection along line
         float line_component = vector2DDot(along, v);
-        #ifdef PDLOG
-        pd->system->logToConsole("along: %.2f", line_component);
-        #endif
         if (line_component > 0 && line_component < point2D_distance(a, b))
         {
             return 1;
@@ -131,6 +127,35 @@ static int test_circle_line_segment(
     return 0;
 }
 
+// return 0 if bounding check cannot rule out collision
+static int
+test_sphere_triangle_bounding(
+    Point3D* sphere,
+    float r,
+    Point3D* p1,
+    Point3D* p2,
+    Point3D* p3
+)
+{
+    Point3D min, max;
+    min.x = MIN(MIN(p1->x, p2->x), p3->x) - r;
+    min.y = MIN(MIN(p1->y, p2->y), p3->y) - r;
+    min.z = MIN(MIN(p1->z, p2->z), p3->z) - r;
+    max.x = MAX(MAX(p1->x, p2->x), p3->x) + r;
+    max.y = MAX(MAX(p1->y, p2->y), p3->y) + r;
+    max.z = MAX(MAX(p1->z, p2->z), p3->z) + r;
+    
+    if (sphere->x <= min.x) return 1;
+    if (sphere->y <= min.y) return 1;
+    if (sphere->z <= min.z) return 1;
+    if (sphere->x >= max.x) return 1;
+    if (sphere->y >= max.y) return 1;
+    if (sphere->z >= max.z) return 1;
+    
+    return 0;
+}
+
+// return 1 if collision, and sets o_normal
 int test_sphere_triangle(
     Point3D* sphere,
     float r,
@@ -148,13 +173,7 @@ int test_sphere_triangle(
     Vector3D v = Point3D_difference(sphere, p1);
     float plane_displacement = Vector3DDot(n, v);
     
-    #ifdef PDLOG
-    pd->system->logToConsole("------");
-    pd->system->logToConsole("s: %.2f %.2f %.2f", sphere->x, sphere->y, sphere->z);
-    pd->system->logToConsole("p: %.2f %.2f %.2f", p1->x, p1->y, p1->z);
-    pd->system->logToConsole("v: %.2f %.2f %.2f", v.dx, v.dy, v.dz);
-    pd->system->logToConsole("plane_displacement: %.2f", plane_displacement);
-    #endif
+    if (test_sphere_triangle_bounding(sphere, r, p1, p2, p3)) return 0;
     
     if (plane_displacement < r && plane_displacement > -r)
     {        
@@ -194,7 +213,6 @@ int test_sphere_triangle(
             return 1;
         }
         
-        // check all three line segments
         if (test_circle_line_segment(qs, r, q2, q3))
         {
             if (o_normal)
@@ -205,9 +223,13 @@ int test_sphere_triangle(
             return 1;
         }
         
-        // check all three line segments
         if (test_circle_line_segment(qs, r, q3, q1))
         {
+            if (o_normal)
+            {
+                // XXX
+                memcpy(o_normal, &n, sizeof(Vector3D));
+            }
             return 1;
         }
     }

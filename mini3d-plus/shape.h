@@ -54,7 +54,7 @@ typedef struct
 	LCDBitmap* texture;
 	FaceTexture* texmap;
 #endif
-	Point3D center; // used for z-sorting entire shapes at a time
+	Point3D center; // used for z-sorting entire shapes at a time, and for collision detection
 	float colorBias;
 	
 	int isClosed : 1;
