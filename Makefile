@@ -12,24 +12,24 @@ ifeq ($(SDK),)
 $(error SDK path not found; set ENV value PLAYDATE_SDK_PATH)
 endif
 
-VPATH += mini3d
+VPATH += mini3d-plus
 
 # List C source files here
 SRC = \
 	main.c \
-	mini3d/mini3d.c \
-	mini3d/3dmath.c \
-	mini3d/scene.c \
-	mini3d/shape.c \
-	mini3d/imposter.c \
-	mini3d/render.c \
-	collision.c \
+	mini3d-plus/mini3d.c \
+	mini3d-plus/3dmath.c \
+	mini3d-plus/scene.c \
+	mini3d-plus/shape.c \
+	mini3d-plus/imposter.c \
+	mini3d-plus/render.c \
+	mini3d-plus/collision.c \
 	luaglue.c
 
 ASRC = setup.s
 
 # List all user directories here
-UINCDIR = mini3d
+UINCDIR = mini3d-plus
 
 # List all user C define here, like -D_DEBUG=1
 UDEFS =

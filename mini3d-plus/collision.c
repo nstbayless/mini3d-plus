@@ -1,5 +1,5 @@
-#include "mini3d/3dmath.h"
-#include "mini3d/mini3d.h"
+#include "3dmath.h"
+#include "mini3d.h"
 
 typedef struct Vector2D
 {

@@ -1,4 +1,8 @@
+# Mini3D+
+
 Enhanced 3D engine for the Panic Playdate. Based on the mini3d library provided in the examples.
+
+If you are currently using or intend to use mini3d on the playdate, you can directly swap it out for mini3d-plus.
 
 ![Kart Example](./etc/kart.gif)
 
