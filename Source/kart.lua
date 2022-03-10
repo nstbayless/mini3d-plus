@@ -63,6 +63,13 @@ kartNode:addImposter(kartshape)
 
 local gfx = playdate.graphics
 
+local cos <const> = math.cos
+local sin <const> = math.sin
+local exp <const> = math.exp
+local min <const> = math.min
+local max <const> = math.max
+local atan2 <const> = math.atan2
+
 kart = {
     -- position and size
     pos = lib3d.point.new(),
@@ -80,23 +87,23 @@ kart = {
     TOP_SPEED = 4,
     
     input = function(self)
-        local theta = math.atan2(self.f.y, self.f.x)
-        local theta_mult = math.exp(-self.v:length() * 3 / self.TOP_SPEED)
+        local theta = atan2(self.f.y, self.f.x)
+        local theta_mult = exp(-self.v:length() * 3 / self.TOP_SPEED)
         if playdate.buttonIsPressed(playdate.kButtonLeft) then
             theta -= 0.05 * theta_mult
         end
         if playdate.buttonIsPressed(playdate.kButtonRight) then
             theta += 0.05 * theta_mult
         end
-        self.f.x = math.cos(theta)
-        self.f.y = math.sin(theta)
+        self.f.x = cos(theta)
+        self.f.y = sin(theta)
     end,
     apply_collision = function(self, normal)
        self.v -= normal * (normal:dot(self.v) + 0.01)
     end,
     update = function(self)
         local p = 0.95
-        local qspeed = math.min(self.TOP_SPEED, math.max(0.5, self.f:dot(self.v)) * 1.1)
+        local qspeed = min(self.TOP_SPEED, max(0.5, self.f:dot(self.v)) * 1.1)
         self.v.x = self.v.x * p + self.f.x * (1 - p) * qspeed
         self.v.y = self.v.y * p + self.f.y * (1 - p) * qspeed
         self.v.z += self.gravity
@@ -133,7 +140,7 @@ kart = {
         self.pos = self.pos + self.v
     end,
     getTransform = function(self)
-        local theta = math.atan2(self.f.y, self.f.x)
+        local theta = atan2(self.f.y, self.f.x)
         local mat = lib3d.matrix.newRotation(theta * rad_to_deg - 90,0,0,1)
         lib3d.matrix.addTranslation(
             mat,
@@ -175,4 +182,5 @@ function playdate.update()
 	gfx.clear(gfx.kColorBlack)
 	scene:draw()
     --scene:drawZBuff()
+    playdate.drawFPS(0,0)
 end
