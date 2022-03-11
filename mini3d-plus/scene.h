@@ -44,10 +44,12 @@ typedef enum
 
 typedef struct
 {
-	Point3D* p1;
+	// CONFUSINGLY, these points are misnamed!
+	// FIXME: rename these p2->p1, p3->p2, p4->p3, p1->p4.
 	Point3D p2;
 	Point3D p3;
 	Point3D p4;
+	Point3D* p1;
 	FaceInstance* src;
 	#if ENABLE_TEXTURES
 	FaceTexture tex;

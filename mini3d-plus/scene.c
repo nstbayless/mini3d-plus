@@ -376,6 +376,37 @@ static void calculateClipping_straddle21(
 	applyPerspectiveToPoint(clipScene, &clip->p4);
 }
 
+// three points in front of camera, zero behind.
+static void calculateClipping_straddle30(
+	ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* a3
+#if ENABLE_TEXTURES
+	, Point2D* ta1, Point2D* ta2, Point2D* ta3
+#endif
+)
+{
+	clip->p2 = *a1;
+	clip->p3 = *a2;
+	clip->p4 = *a3;
+	
+	#if ENABLE_TEXTURES
+	if (POINT_FT_NOT_NULL(ta1))
+	{
+		clip->tex.t1 = *ta1;
+		clip->tex.t2 = *ta2;
+		clip->tex.t3 = *ta3;
+		clip->tex.texture_enabled = 1;
+	}
+	else
+	{
+		clip->tex.texture_enabled = 0;
+	}
+	#endif
+	
+	applyPerspectiveToPoint(clipScene, &clip->p2);
+	applyPerspectiveToPoint(clipScene, &clip->p3);
+	applyPerspectiveToPoint(clipScene, &clip->p4);
+}
+
 // two points in front of camera, two points behind.
 static void calculateClipping_straddle22(
 	ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* b1, Point3D* b2
@@ -409,24 +440,61 @@ static void calculateClipping_straddle22(
 	applyPerspectiveToPoint(clipScene, &clip->p4);
 }
 
-// three points in front of camera, zero behind.
-static void calculateClipping_straddle30(
-	ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* a3
+// three points in front of camera, one point behind.
+// interpolate b toward a1
+static void calculateClipping_straddle31A1(
+	ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* a3, Point3D* b
 #if ENABLE_TEXTURES
-	, Point2D* ta1, Point2D* ta2, Point2D* ta3
+	, Point2D* ta1, Point2D* ta2, Point2D* ta3, Point2D* tb
 #endif
 )
 {
-	clip->p2 = *a1;
-	clip->p3 = *a2;
-	clip->p4 = *a3;
+	clip->p1 = a1;
+	clip->p2 = *a2;
+	clip->p3 = *a3;
+	float pa1b = interpolatePointAtZClip(&clip->p4, a1, b);
 	
 	#if ENABLE_TEXTURES
 	if (POINT_FT_NOT_NULL(ta1))
 	{
-		clip->tex.t1 = *ta1;
-		clip->tex.t2 = *ta2;
-		clip->tex.t3 = *ta3;
+		clip->tex.t4 = *ta1;
+		clip->tex.t1 = *ta2;
+		clip->tex.t2 = *ta3;
+		interpolatePoint2D(&clip->tex.t3, ta1, tb, pa1b);
+		clip->tex.texture_enabled = 1;
+	}
+	else
+	{
+		clip->tex.texture_enabled = 0;
+	}
+	#endif
+	
+	applyPerspectiveToPoint(clipScene, &clip->p2);
+	applyPerspectiveToPoint(clipScene, &clip->p3);
+	applyPerspectiveToPoint(clipScene, &clip->p4);
+}
+
+// three points in front of camera, one point behind.
+// interpolate b toward a3
+static void calculateClipping_straddle31A3(
+	ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* a3, Point3D* b
+#if ENABLE_TEXTURES
+	, Point2D* ta1, Point2D* ta2, Point2D* ta3, Point2D* tb
+#endif
+)
+{
+	clip->p1 = a1;
+	clip->p2 = *a2;
+	clip->p3 = *a3;
+	float pa3b = interpolatePointAtZClip(&clip->p4, a3, b);
+	
+	#if ENABLE_TEXTURES
+	if (POINT_FT_NOT_NULL(ta1))
+	{
+		clip->tex.t4 = *ta1;
+		clip->tex.t1 = *ta2;
+		clip->tex.t2 = *ta3;
+		interpolatePoint2D(&clip->tex.t3, ta3, tb, pa3b);
 		clip->tex.texture_enabled = 1;
 	}
 	else
@@ -544,8 +612,16 @@ static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstanc
 		}
 		else if (!q1 && q2 && q3 && q4)
 		{
-			CLIP3(21, 2, 3, 1);
-			CLIP3(21, 3, 4, 1);
+			if (p2->z > p4-> z)
+			{
+				CLIP4(31A1, 2, 3, 4, 1);
+				CLIP3(21, 3, 4, 1);
+			}
+			else
+			{
+				CLIP4(31A3, 2, 3, 4, 1);
+				CLIP3(21, 2, 3, 1);
+			}
 		}
 		else if (q1 && !q2 && q3 && q4)
 		{
@@ -554,8 +630,16 @@ static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstanc
 		}
 		else if (q1 && q2 && !q3 && q4)
 		{
-			CLIP3(21, 1, 2, 3);
-			CLIP3(21, 4, 1, 3);
+			if (p4->z > p2-> z)
+			{
+				CLIP4(31A1, 4, 1, 2, 3);
+				CLIP3(21, 1, 2, 3);
+			}
+			else
+			{
+				CLIP4(31A3, 4, 1, 2, 3);
+				CLIP3(21, 4, 1, 3);
+			}
 		}
 		else if (q1 && q2 && q3 && !q4)
 		{
@@ -573,11 +657,11 @@ static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstanc
 		}
 		else if (!q1 && q2 && !q3)
 		{
-			CLIP3(12, 2, 1, 3);
+			CLIP3(12, 2, 3, 1);
 		}
 		else if (!q1 && !q2 && q3)
 		{
-			CLIP3(12, 3, 2, 1);
+			CLIP3(12, 3, 1, 2);
 		}
 		else if (q1 && q2 && !q3)
 		{

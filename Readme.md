@@ -13,6 +13,12 @@ If you are currently using or intend to use mini3d on the playdate, you can dire
   - To use greyscale textures, you must save the image with some extension other than `.png`, as the build script converts `.png` images into `.pdi`.
 - Collision detection
 
+## Known bugs (and workarounds)
+
+- Sometimes textures seem to 'jump' or 'flex.' There are two reasons for this:
+  1. projective texture mapping is disabled for faces that are close to flush with the surface or are far from the camera. Try increasing `TEXTURE_PROJECTIVE_RATIO_THRESHOLD` or disabling the check altogether.
+  2. Actually, the second cause is not fully understood, but it appears to happen only when clipping quads. Try using triangles instead of quads. 
+
 ## Build Instructions
 
 You must have installed the [Playdate SDK](https://play.date/dev/). Be sure to set the `PLAYDATE_SDK_PATH` environment variable, as described in the SDK installation instructions.
