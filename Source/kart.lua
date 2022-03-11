@@ -78,16 +78,26 @@ if j then
         )
     end
 end
+j = nil -- clean up
 
 n2:addShape(terrain)
 n2:addShape(banner)
 
-local KSIZE = 2
+local KSIZE = 4.5
+local sink = 0.2
 kartshape = lib3d.imposter.new()
 
+-- load kart textures
+KART_ANGLES = 40
+local kart_texture = {}
+for i = 0,KART_ANGLES-1 do
+    local f = "assets/kart/img-"..tostring(i)..".png.u"
+    kart_texture[i] = lib3d.texture.new(f, true)
+end
+
 kartshape:setPosition(lib3d.point.new(0, 0, 0))
-kartshape:setRectangle(-KSIZE /2, -KSIZE, KSIZE /2, 0)
-kartshape:setTexture("assets/kart.png")
+kartshape:setRectangle(-KSIZE /2, -KSIZE * (1-sink), KSIZE /2, KSIZE * sink)
+kartshape:setTexture(lib3d.texture.new("assets/kart/img-0.png.u", true))
 
 kartNode = n:addChildNode()
 kartNode:addImposter(kartshape)
@@ -97,13 +107,16 @@ local gfx = playdate.graphics
 kart = {
     -- position and size
     pos = lib3d.point.new(),
-    r = 1.1,
+    r = 2,
     
     -- facing
     f = lib3d.point.new(-1, -1, 0),
     
     -- velocity
     v = lib3d.point.new(),
+    
+    -- camera angle
+    cam = lib3d.point.new(-1, -1, 0),
     
     gravity = lib3d.point.new(0, 0, -0.06),
     
@@ -161,6 +174,14 @@ kart = {
             end
         end
         
+        self.cam += self.f * 0.1 + self.v * 0.01
+        self.cam.z = 0
+        if self.cam:length() < 0.1 then
+            self.cam = self.f
+        else
+            self.cam:normalize()
+        end
+        
         self.pos = self.pos + self.v
     end,
     getTransform = function(self)
@@ -177,13 +198,20 @@ kart = {
     setShoulderCamera = function(self, scene)
         local radius = 10
         local attack = 0.5
+        local fv = self.cam
         scene:setCameraOrigin(
-            self.pos.x- self.f.x * radius,
-            self.pos.y - self.f.y * radius,
+            self.pos.x - fv.x * radius,
+            self.pos.y - fv.y * radius,
             self.pos.z + radius * attack)
         scene:setCameraTarget(self.pos.x, self.pos.y, self.pos.z + 4)
         scene:setCameraUp(0, 0, -1)
-    end
+    
+        -- set texture
+        local cam_reltheta = atan2(fv.y, fv.x) - atan2(self.f.y, self.f.x)
+        local kart_frame = math.floor(-cam_reltheta * KART_ANGLES / 2 / math.pi + 0.5) % KART_ANGLES
+        print(cam_reltheta)
+        kartshape:setTexture(kart_texture[kart_frame])
+    end,
 }
 rot = lib3d.matrix.newRotation(1,0,1,0)
 r = 0

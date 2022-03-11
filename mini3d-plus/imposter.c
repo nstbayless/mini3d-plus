@@ -27,6 +27,10 @@ void Imposter3D_init(Imposter3D* imposter)
 	imposter->lighting = 0;
 	#endif
 	#endif
+	
+	#if ENABLE_CUSTOM_PATTERNS
+	imposter->pattern = &patterns;
+	#endif
 }
 
 Imposter3D* Imposter3D_retain(Imposter3D* imposter)

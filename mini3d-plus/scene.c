@@ -1120,7 +1120,7 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 		if ( shape->header.useZBuffer )
 		{
 			#if ENABLE_TEXTURES
-			if ( ft && ft->texture_enabled )
+			if ( ft && ft->texture_enabled && shape->prototype->texture )
 			{
 				fillQuad_zt(bitmap, rowstride, face->p1, face->p2, face->p3, face->p4,
 					shape->prototype->texture, ft->t1, ft->t2, ft->t3, ft->t4
@@ -1146,7 +1146,7 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 		if ( shape->header.useZBuffer )
 		{
 			#if ENABLE_TEXTURES
-			if ( ft && ft->texture_enabled )
+			if ( ft && ft->texture_enabled && shape->prototype->texture )
 			{
 				fillTriangle_zt(bitmap, rowstride, face->p1, face->p2, face->p3,
 					shape->prototype->texture, ft->t1, ft->t2, ft->t3

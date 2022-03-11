@@ -555,7 +555,7 @@ static int shape_setFaceLighting(lua_State* L)
 #endif
 #endif
 
-#ifdef ENABLE_CUSTOM_PATTERNS
+#if ENABLE_CUSTOM_PATTERNS
 static int shape_setPattern(lua_State* L)
 {
 	Shape3D* shape = getShape(1);

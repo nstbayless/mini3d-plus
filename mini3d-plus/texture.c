@@ -191,7 +191,10 @@ Texture* Texture_loadFromPath(const char* path, int greyscale, const char** oute
             if (p[3] < 0x80)
             {
                 g->transparency = 1;
-                *t |= 0x00;
+            }
+            else
+            {
+                *t |= 0x80;
             }
         }
         m3d_free(dbuff);
