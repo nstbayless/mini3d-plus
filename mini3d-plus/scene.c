@@ -1015,7 +1015,13 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 	else if ( vi < 0 )
 		vi = 0;
 
-	uint8_t* pattern = (uint8_t*)&patterns[vi];
+	uint8_t* pattern = (uint8_t*)&
+	#if ENABLE_CUSTOM_PATTERNS
+	(*shape->prototype->pattern)
+	#else
+	patterns
+	#endif
+	[vi];
 	
 	#if ENABLE_TEXTURES
 	if (!ft && shape->prototype->texmap && shape->prototype->texture)
@@ -1214,10 +1220,13 @@ drawWireframe(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 static void
 drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int rowstride)
 {
-	// FIXME: this function is just a temporary implementation
-	// pay no attention.
-	// destroy and rewrite from scratch.
-	uint8_t* pattern = (uint8_t*)&patterns[25];
+	#if ENABLE_CUSTOM_PATTERNS
+	PatternTable* patterns = imposter->prototype->pattern;
+	uint8_t* pattern = (uint8_t*)&(*patterns)
+	#else
+	uint8_t* pattern = patterns
+	#endif
+	[25];
 	
 	if (imposter->header.center.z <= CLIP_EPSILON / 2)
 	{
@@ -1244,9 +1253,10 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 		if (imposter->prototype->bitmap)
 			fillQuad_zt(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, imposter->prototype->bitmap, t1, t2, t3, t4
 			#if ENABLE_CUSTOM_PATTERNS
-			, &patterns
+			, patterns
 			#endif
 			#if ENABLE_TEXTURES_GREYSCALE
+			// TODO: lighting on imposters
 			, 0, 0
 			#endif
 			);

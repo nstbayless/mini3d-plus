@@ -18,11 +18,20 @@ n2 = n:addChildNode()
 terrain = lib3d.shape.new()
 terrain:setTexture("assets/texture.png.u", true)
 terrain:setClosed(1);
-terrain:setPattern(
+
+banner = lib3d.shape.new()
+banner:setPattern(
     lib3d.pattern.new(
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-        0x80, 0x40, 0x20, 0x10, 0x08, 0x04, 0x02, 0x01,
-        0x88, 0x44, 0x22, 0x11
+        -- we are using 7 patterns,
+        -- but supports up to 33 patterns.
+        
+        0xD0, 0xF0, 0x70, 0xF0, 0x0D, 0x0F, 0x07, 0x0F, -- darker
+        0xF0, 0xD0, 0xF0, 0xF0, 0x0F, 0x0F, 0x07, 0x0F, -- slightly darker
+        0xF0, 0xF0, 0xF0, 0xF0, 0x0F, 0x0F, 0x0F, 0x0F, -- normal
+        0xF0, 0xF0, 0xF0, 0xF0, 0x0F, 0x0F, 0x0F, 0x0F, -- normal
+        0xF0, 0xF0, 0xF0, 0xF0, 0x0F, 0x0F, 0x0F, 0x0F, -- normal
+        0xF0, 0xF2, 0xF0, 0xF0, 0x0F, 0x0F, 0x4F, 0x0F, -- slightly brighter
+        0xF2, 0xF0, 0xF8, 0xF0, 0x2F, 0x0F, 0x8F, 0x0F -- brighter
     )
 )
 
@@ -51,7 +60,7 @@ end
 -- track
 j = json.decodeFile("assets/track.json")
 if j then
-    for _, face in ipairs(j["faces"]) do
+    for _, face in ipairs(j["course"]) do
         f_idx = terrain:addFace(
             table.unpack(face_vertices(face))
         )
@@ -63,9 +72,15 @@ if j then
             1, 0
         )
     end
+    for _, face in ipairs(j["banner"]) do
+        f_idx = banner:addFace(
+            table.unpack(face_vertices(face))
+        )
+    end
 end
 
 n2:addShape(terrain)
+n2:addShape(banner)
 
 local KSIZE = 2
 kartshape = lib3d.imposter.new()
