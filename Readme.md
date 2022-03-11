@@ -6,6 +6,10 @@ If you are currently using or intend to use mini3d on the playdate, you can dire
 
 ![Kart Example](./etc/kart.gif)
 
+With textures:
+
+![Textured Kart Example](./etc/kart-textures.gif)
+
 ## New features
 
 - Mesh clpping at camera (allows rendering faces which are partly behind the camera)
