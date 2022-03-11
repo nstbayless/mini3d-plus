@@ -549,10 +549,24 @@ static int shape_setFaceLighting(lua_State* L)
 	float l = pd->lua->getArgFloat(3);
 	
 	Shape3D_setFaceLighting(shape, face_idx, l);
-		
+	
 	return 0;
 }
 #endif
+#endif
+
+#ifdef ENABLE_CUSTOM_PATTERNS
+static int shape_setPattern(lua_State* L)
+{
+	Shape3D* shape = getShape(1);
+	PatternTable* pt = NULL;
+	if (pd->lua->getArgType(2, NULL) != kTypeNil)
+	{
+		pt = getPatternTable(2);
+	}
+	Shape3D_setPattern(shape, pt);
+	return 0;
+}
 #endif
 
 static int shape_setClosed(lua_State* L)
@@ -666,9 +680,14 @@ static const lua_reg lib3DShape[] =
 	{ "setClosed", 		shape_setClosed },
 	{ "collidesSphere", shape_collideSphere },
 #if ENABLE_TEXTURES
-	{ "setTexture",		shape_setTexture },
-	{ "setFaceTextureMap", shape_setFaceTextureMap},
-	{ "setFaceLighting", shape_setFaceLighting},
+		{ "setTexture",		shape_setTexture },
+		{ "setFaceTextureMap", shape_setFaceTextureMap},
+		#if ENABLE_TEXTURES_GREYSCALE
+			{ "setFaceLighting", shape_setFaceLighting},
+		#endif
+#endif
+#if ENABLE_CUSTOM_PATTERNS
+	{ "setPattern", shape_setPattern },
 #endif
 #if ENABLE_ORDERING_TABLE
 	{ "setOrderTableSize", shape_setOrderTableSize, },
@@ -729,6 +748,30 @@ static int imposter_setBitmap(lua_State* L)
 	if (t) Texture_unref(t);
 	return 0;
 }
+
+#if ENABLE_TEXTURES_GREYSCALE
+static int imposter_setLighting(lua_State* L)
+{
+	Imposter3D* imposter = getImposter(1);
+	float lighting = pd->lua->getArgFloat(2);
+	Imposter3D_setLighting(imposter, lighting);
+	return 0;
+}
+#endif
+#endif
+
+#if ENABLE_CUSTOM_PATTERNS
+static int imposter_setPattern(lua_State* L)
+{
+	Imposter3D* imposter = getImposter(1);
+	PatternTable* pt = NULL;
+	if (pd->lua->getArgType(2, NULL) != kTypeNil)
+	{
+		pt = getPatternTable(2);
+	}
+	Imposter3D_setPattern(imposter, pt);
+	return 0;
+}
 #endif
 
 static const lua_reg lib3DImposter[] =
@@ -739,6 +782,12 @@ static const lua_reg lib3DImposter[] =
 	{ "setRectangle", 	imposter_setRectangle },
 #if ENABLE_TEXTURES
 	{ "setTexture",		imposter_setBitmap },
+	#if ENABLE_TEXTURES_GREYSCALE
+		{ "setLighting", imposter_setLighting },
+	#endif
+#endif
+#if ENABLE_CUSTOM_PATTERNS
+	{ "setPattern",  imposter_setPattern},
 #endif
 	{ NULL,				NULL }
 };
@@ -1062,6 +1111,29 @@ static int pattern_new(lua_State* L)
 {
 	PatternTable* p = Pattern_new();
 	pd->lua->pushObject(p, "lib3d.pattern", 0);
+	size_t argc = pd->lua->getArgCount() - 1;
+	pd->system->logToConsole("%d", argc);
+	if (argc == 0)
+	{
+		memcpy(p, &patterns, sizeof(PatternTable));
+		return 1;
+	}
+	size_t argc8 = ((argc + 7)/8);
+	for (size_t i = 0; i < LIGHTING_PATTERN_COUNT; ++i)	
+	{
+		for (size_t j = 0; j < 8; ++j)
+		{
+			size_t argidx8 = i % argc8;
+			size_t argidx_ = j % (8);
+			if (argidx8 == argc8 - 1 && argc % 8 != 0)
+			{
+				argidx_ = j % (argc % 8);
+			}
+			size_t argidx = (argidx8 * 8 + argidx_);
+			uint8_t v = pd->lua->getArgInt(argidx + 1);
+			(*p)[i][j] = v;
+		}
+	}
 	return 1;
 }
 

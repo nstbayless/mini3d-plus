@@ -86,7 +86,7 @@ void Imposter3D_setLighting(
 #if ENABLE_CUSTOM_PATTERNS
 // pattern must either be NULL,
 // or else it must be a refcounted pattern table created via Pattern_new().
-void Imposter_setPattern(Imposter3D* imposter, PatternTable* pattern)
+void Imposter3D_setPattern(Imposter3D* imposter, PatternTable* pattern)
 {
 	if (pattern == NULL) pattern = &patterns;
 	Pattern_ref(pattern);
