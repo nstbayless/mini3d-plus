@@ -97,7 +97,7 @@ local gfx = playdate.graphics
 kart = {
     -- position and size
     pos = lib3d.point.new(),
-    r = 1,
+    r = 1.1,
     
     -- facing
     f = lib3d.point.new(-1, -1, 0),
@@ -112,7 +112,7 @@ kart = {
     
     input = function(self)
         local theta = atan2(self.f.y, self.f.x)
-        local theta_mult = exp(-self.v:length() * 3 / self.TOP_SPEED)
+        local theta_mult = exp(-self.v:length() * 2 / self.TOP_SPEED)
         if playdate.buttonIsPressed(playdate.kButtonLeft) then
             theta -= 0.05 * theta_mult
         end
@@ -127,7 +127,7 @@ kart = {
     end,
     update = function(self)
         local p = 0.95
-        local qspeed = min(self.TOP_SPEED, max(0.5, self.f:dot(self.v)) * 1.1)
+        local qspeed = min(self.TOP_SPEED, max(0.5, self.f:dot(self.v)) * 1.15)
         self.v.x = self.v.x * p + self.f.x * (1 - p) * qspeed
         self.v.y = self.v.y * p + self.f.y * (1 - p) * qspeed
         self.v += self.gravity
@@ -181,7 +181,7 @@ kart = {
             self.pos.x- self.f.x * radius,
             self.pos.y - self.f.y * radius,
             self.pos.z + radius * attack)
-        scene:setCameraTarget(self.pos.x, self.pos.y, self.pos.z + self.r * 4)
+        scene:setCameraTarget(self.pos.x, self.pos.y, self.pos.z + 4)
         scene:setCameraUp(0, 0, -1)
     end
 }

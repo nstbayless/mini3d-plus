@@ -46,9 +46,8 @@
 // is less than this will have projective textures.
 // If this value is too high, performance may drop.
 // If this value is too low, textures may "jump" slightly as they approach the camera.
-// Comment this definition out entirely to use projective texture mapping
-// indiscriminately.
-#define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.8
+// Comment this definition out entirely to disable this check.
+#define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.94
 
 // clip faces which are partly behind the camera.
 // This allows rendering faces which are partly behind the camera.

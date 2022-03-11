@@ -544,8 +544,8 @@ static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstanc
 		}
 		else if (!q1 && q2 && q3 && q4)
 		{
-			CLIP3(30, 2, 3, 4);
-			CLIP3(21, 2, 4, 1);
+			CLIP3(21, 2, 3, 1);
+			CLIP3(21, 3, 4, 1);
 		}
 		else if (q1 && !q2 && q3 && q4)
 		{
@@ -554,8 +554,8 @@ static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstanc
 		}
 		else if (q1 && q2 && !q3 && q4)
 		{
-			CLIP3(30, 4, 1, 2);
-			CLIP3(21, 4, 2, 3);
+			CLIP3(21, 1, 2, 3);
+			CLIP3(21, 4, 1, 3);
 		}
 		else if (q1 && q2 && q3 && !q4)
 		{
