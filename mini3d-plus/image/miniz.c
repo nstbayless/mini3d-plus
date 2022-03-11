@@ -25,7 +25,7 @@
  *
  **************************************************************************/
 
-
+#if ENABLE_TEXTURES && ENABLE_TEXTURES_GREYSCALE
 
 typedef unsigned char mz_validate_uint16[sizeof(mz_uint16) == 2 ? 1 : -1];
 typedef unsigned char mz_validate_uint32[sizeof(mz_uint32) == 4 ? 1 : -1];
@@ -2994,7 +2994,7 @@ extern "C" {
 #ifdef MINIZ_NO_STDIO
 #define MZ_FILE void *
 #else
-#include <sys/stat.h>
+//#include <sys/stat.h>
 
 #if defined(_MSC_VER) || defined(__MINGW64__)
 static FILE *mz_fopen(const char *pFilename, const char *pMode)
@@ -3011,7 +3011,7 @@ static FILE *mz_freopen(const char *pPath, const char *pMode, FILE *pStream)
     return pFile;
 }
 #ifndef MINIZ_NO_TIME
-#include <sys/utime.h>
+//#include <sys/utime.h>
 #endif
 #define MZ_FOPEN mz_fopen
 #define MZ_FCLOSE fclose
@@ -3026,7 +3026,7 @@ static FILE *mz_freopen(const char *pPath, const char *pMode, FILE *pStream)
 #define MZ_DELETE_FILE remove
 #elif defined(__MINGW32__)
 #ifndef MINIZ_NO_TIME
-#include <sys/utime.h>
+//#include <sys/utime.h>
 #endif
 #define MZ_FOPEN(f, m) fopen(f, m)
 #define MZ_FCLOSE fclose
@@ -3041,7 +3041,7 @@ static FILE *mz_freopen(const char *pPath, const char *pMode, FILE *pStream)
 #define MZ_DELETE_FILE remove
 #elif defined(__TINYC__)
 #ifndef MINIZ_NO_TIME
-#include <sys/utime.h>
+//#include <sys/utime.h>
 #endif
 #define MZ_FOPEN(f, m) fopen(f, m)
 #define MZ_FCLOSE fclose
@@ -3056,7 +3056,7 @@ static FILE *mz_freopen(const char *pPath, const char *pMode, FILE *pStream)
 #define MZ_DELETE_FILE remove
 #elif defined(__USE_LARGEFILE64) /* gcc, clang */
 #ifndef MINIZ_NO_TIME
-#include <utime.h>
+//#include <utime.h>
 #endif
 #define MZ_FOPEN(f, m) fopen64(f, m)
 #define MZ_FCLOSE fclose
@@ -3071,7 +3071,7 @@ static FILE *mz_freopen(const char *pPath, const char *pMode, FILE *pStream)
 #define MZ_DELETE_FILE remove
 #elif defined(__APPLE__)
 #ifndef MINIZ_NO_TIME
-#include <utime.h>
+//#include <utime.h>
 #endif
 #define MZ_FOPEN(f, m) fopen(f, m)
 #define MZ_FCLOSE fclose
@@ -3088,7 +3088,7 @@ static FILE *mz_freopen(const char *pPath, const char *pMode, FILE *pStream)
 #else
 #pragma message("Using fopen, ftello, fseeko, stat() etc. path for file I/O - this path may not support large files.")
 #ifndef MINIZ_NO_TIME
-#include <utime.h>
+//#include <utime.h>
 #endif
 #define MZ_FOPEN(f, m) fopen(f, m)
 #define MZ_FCLOSE fclose
@@ -7731,3 +7731,5 @@ mz_bool mz_zip_end(mz_zip_archive *pZip)
 #endif
 
 #endif /*#ifndef MINIZ_NO_ARCHIVE_APIS*/
+
+#endif

@@ -13,7 +13,6 @@
 #include <stdint.h>
 #include <string.h>
 #include "render.h"
-#include <assert.h>
 
 #define LCD_ROWS 240
 #define LCD_COLUMNS 400
@@ -925,7 +924,6 @@ LCDRowRange fillQuad_zt(
 #endif
 
 #if ENABLE_Z_BUFFER
-#include <stdio.h>
 #include <stdlib.h>
 
 void render_zbuff(uint8_t* out, int rowstride)

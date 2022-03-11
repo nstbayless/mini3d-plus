@@ -16,7 +16,7 @@ Pattern_free(PatternTable* p)
     }
 }
 
-PatternTable* Pattern_new()
+PatternTable* Pattern_new(void)
 {
     void* v = m3d_malloc(sizeof(uint32_t) + sizeof(PatternTable));
     *(uint32_t*)v = 1;

@@ -166,7 +166,7 @@ Texture* Texture_loadFromPath(const char* path, int greyscale, const char** oute
         spng_ctx_free(ctx);
         m3d_free(fbuff);
         
-        void* v = malloc(sizeof(uint32_t) + sizeof(GreyBitmap) + ihdr.width * ihdr.height);
+        void* v = m3d_malloc(sizeof(uint32_t) + sizeof(GreyBitmap) + ihdr.width * ihdr.height);
         *(uint32_t*)v = 1;
         GreyBitmap* g = v + sizeof(uint32_t);
         uint8_t* tbuff = v + sizeof(GreyBitmap) + sizeof(uint32_t);

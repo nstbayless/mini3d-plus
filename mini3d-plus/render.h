@@ -9,7 +9,6 @@
 #ifndef render_h
 #define render_h
 
-#include <stdio.h>
 #include "3dmath.h"
 #include "mini3d.h"
 #include "texture.h"

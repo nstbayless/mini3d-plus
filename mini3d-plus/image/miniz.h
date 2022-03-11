@@ -121,7 +121,7 @@
    If all macros here are defined the only functionality remaining will be CRC-32, adler-32, tinfl, and tdefl. */
 
 /* Define MINIZ_NO_STDIO to disable all usage and any functions which rely on stdio for file I/O. */
-/*#define MINIZ_NO_STDIO */
+#define MINIZ_NO_STDIO
 
 /* If MINIZ_NO_TIME is specified then the ZIP archive functions will not be able to get the current time, or */
 /* get/set file times, and the C run-time funcs that get/set times won't be called. */
@@ -154,7 +154,7 @@
 #include <stddef.h>
 
 #if !defined(MINIZ_NO_TIME) && !defined(MINIZ_NO_ARCHIVE_APIS)
-#include <time.h>
+//#include <time.h>
 #endif
 
 #if defined(_M_IX86) || defined(_M_X64) || defined(__i386__) || defined(__i386) || defined(__i486__) || defined(__i486) || defined(i386) || defined(__ia64__) || defined(__x86_64__)
@@ -484,9 +484,8 @@ typedef void *const voidpc;
 
 
 #pragma once
-#include <assert.h>
 #include <stdint.h>
-#include <stdlib.h>
+//#include <stdlib.h>
 #include <string.h>
 
 
@@ -514,7 +513,7 @@ typedef int mz_bool;
 #ifdef MINIZ_NO_STDIO
 #define MZ_FILE void *
 #else
-#include <stdio.h>
+//#include <stdio.h>
 #define MZ_FILE FILE
 #endif /* #ifdef MINIZ_NO_STDIO */
 
@@ -528,7 +527,7 @@ typedef struct mz_dummy_time_t_tag
 #define MZ_TIME_T time_t
 #endif
 
-#define MZ_ASSERT(x) assert(x)
+#define MZ_ASSERT(x) (void)(x)
 
 #ifdef MINIZ_NO_MALLOC
 #define MZ_MALLOC(x) m3d_malloc(x)

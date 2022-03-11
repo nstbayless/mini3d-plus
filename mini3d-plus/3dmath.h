@@ -9,7 +9,6 @@
 #ifndef __Playdate_Simulator__pd3d__
 #define __Playdate_Simulator__pd3d__
 
-#include <stdio.h>
 #include <stdint.h>
 #include <math.h>
 

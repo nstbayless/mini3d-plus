@@ -23,7 +23,7 @@
 #define ENABLE_CUSTOM_PATTERNS 1
 
 // allow textured faces
-#define ENABLE_TEXTURES 1
+#define ENABLE_TEXTURES 0
 
 // allow textures to have non-opaque pixels
 #define ENABLE_TEXTURES_MASK 1
@@ -58,6 +58,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string.h>
 
 extern void* (*m3d_realloc)(void* ptr, size_t size);
 void* m3d_malloc(size_t size);
@@ -73,7 +74,8 @@ typedef Pattern PatternTable[LIGHTING_PATTERN_COUNT];
 // TODO:
 extern PatternTable patterns;
 
-#include <pd_api.h>
+typedef struct PlaydateAPI PlaydateAPI;
+typedef struct LCDBitmap LCDBitmap;
 PlaydateAPI* pd;
 
 #endif /* mini3d_h */

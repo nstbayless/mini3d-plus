@@ -2,11 +2,15 @@
 
 #define SPNG__BUILD
 
+#include "mini3d.h"
 #include "spng.h"
+#include "stdlib.h"
+
+#if ENABLE_TEXTURES && ENABLE_TEXTURES_GREYSCALE
 
 #include <limits.h>
 #include <string.h>
-#include <stdio.h>
+//#include <stdio.h>
 #include <math.h>
 
 #define SPNG_USE_MINIZ
@@ -24,7 +28,7 @@
 #endif
 
 #ifdef SPNG_MULTITHREADING
-    #include <pthread.h>
+   // #include <pthread.h>
 #endif
 
 /* Not build options, edit at your own risk! */
@@ -4893,19 +4897,6 @@ int spng_encode_image(spng_ctx *ctx, const void *img, size_t len, int fmt, int f
     return 0;
 }
 
-spng_ctx *spng_ctx_new(int flags)
-{
-    struct spng_alloc alloc =
-    {
-        .malloc_fn = malloc,
-        .realloc_fn = realloc,
-        .calloc_fn = calloc,
-        .free_fn = free
-    };
-
-    return spng_ctx_new2(&alloc, flags);
-}
-
 spng_ctx *spng_ctx_new2(struct spng_alloc *alloc, int flags)
 {
     if(alloc == NULL) return NULL;
@@ -5038,7 +5029,7 @@ static int buffer_read_fn(spng_ctx *ctx, void *user, void *data, size_t n)
 
     return 0;
 }
-
+/*
 static int file_read_fn(spng_ctx *ctx, void *user, void *data, size_t n)
 {
     FILE *file = user;
@@ -5061,7 +5052,7 @@ static int file_write_fn(spng_ctx *ctx, void *user, void *data, size_t n)
     if(fwrite(data, n, 1, file) != 1) return SPNG_IO_ERROR;
 
     return 0;
-}
+}*/
 
 int spng_set_png_buffer(spng_ctx *ctx, const void *buf, size_t size)
 {
@@ -5119,6 +5110,7 @@ int spng_set_png_stream(spng_ctx *ctx, spng_rw_fn *rw_func, void *user)
     return 0;
 }
 
+/*
 int spng_set_png_file(spng_ctx *ctx, FILE *file)
 {
     if(file == NULL) return 1;
@@ -5127,6 +5119,7 @@ int spng_set_png_file(spng_ctx *ctx, FILE *file)
 
     return spng_set_png_stream(ctx, file_read_fn, file);
 }
+*/
 
 void *spng_get_png_buffer(spng_ctx *ctx, size_t *len, int *error)
 {
@@ -6995,3 +6988,4 @@ static uint32_t expand_palette_rgb8_neon(unsigned char *row, const unsigned char
 }
 
 #endif /* SPNG_ARM */
+#endif

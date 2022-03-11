@@ -2,6 +2,7 @@
 #define texture_h
 
 #include "mini3d.h"
+#include <pd_api.h>
 
 #if ENABLE_TEXTURES
 
