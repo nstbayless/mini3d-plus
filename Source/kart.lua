@@ -50,10 +50,14 @@ local function face_vertex(face, i)
     )
 end
 
-local function face_vertices(face)
+local function face_vertices(face, ...)
     verts = {}
     for i=1,#face do
         verts[#verts+1]  = face_vertex(face, i)
+    end
+    vargs = {...}
+    for i = 1,#vargs do
+        verts[#verts+1] = vargs[i]
     end
     return verts
 end
@@ -63,7 +67,7 @@ j = json.decodeFile("assets/track.json")
 if j then
     for _, face in ipairs(j["course"]) do
         f_idx = terrain:addFace(
-            table.unpack(face_vertices(face))
+            table.unpack(face_vertices(face, 0.2))
         )
         if lib3d.texture then
             terrain:setFaceTextureMap(
@@ -93,7 +97,7 @@ kartshape = lib3d.imposter.new()
 -- load kart textures
 if lib3d.texture then
     KART_ANGLES = 40
-    local kart_texture = {}
+    kart_texture = {}
     for i = 0,KART_ANGLES-1 do
         local f = "assets/kart/img-"..tostring(i)..".png.u"
         kart_texture[i] = lib3d.texture.new(f, true)
