@@ -16,25 +16,26 @@ local rad_to_deg = 180 / math.pi
 n = scene:getRootNode()
 n2 = n:addChildNode()
 terrain = lib3d.shape.new()
-terrain:setTexture("assets/texture.png.u", true)
 terrain:setClosed(1);
 
 banner = lib3d.shape.new()
-banner:setPattern(
-    lib3d.pattern.new(
-        -- we are using 7 patterns,
-        -- but supports up to 33 patterns.
-        
-        0xD0, 0xF0, 0x70, 0xF0, 0x0D, 0x0F, 0x07, 0x0F, -- darker
-        0xF0, 0xD0, 0xF0, 0xF0, 0x0F, 0x0F, 0x07, 0x0F, -- slightly darker
-        0xF0, 0xF0, 0xF0, 0xF0, 0x0F, 0x0F, 0x0F, 0x0F, -- normal
-        0xF0, 0xF0, 0xF0, 0xF0, 0x0F, 0x0F, 0x0F, 0x0F, -- normal
-        0xF0, 0xF0, 0xF0, 0xF0, 0x0F, 0x0F, 0x0F, 0x0F, -- normal
-        0xF0, 0xF2, 0xF0, 0xF0, 0x0F, 0x0F, 0x4F, 0x0F, -- slightly brighter
-        0xF2, 0xF0, 0xF8, 0xF0, 0x2F, 0x0F, 0x8F, 0x0F -- brighter
+if lib3d.pattern then
+    banner:setPattern(
+        lib3d.pattern.new(
+            -- we are using 7 patterns,
+            -- but supports up to 33 patterns.
+            
+            0xD0, 0xF0, 0x70, 0xF0, 0x0D, 0x0F, 0x07, 0x0F, -- darker
+            0xF0, 0xD0, 0xF0, 0xF0, 0x0F, 0x0F, 0x07, 0x0F, -- slightly darker
+            0xF0, 0xF0, 0xF0, 0xF0, 0x0F, 0x0F, 0x0F, 0x0F, -- normal
+            0xF0, 0xF0, 0xF0, 0xF0, 0x0F, 0x0F, 0x0F, 0x0F, -- normal
+            0xF0, 0xF0, 0xF0, 0xF0, 0x0F, 0x0F, 0x0F, 0x0F, -- normal
+            0xF0, 0xF2, 0xF0, 0xF0, 0x0F, 0x0F, 0x4F, 0x0F, -- slightly brighter
+            0xF2, 0xF0, 0xF8, 0xF0, 0x2F, 0x0F, 0x8F, 0x0F -- brighter
+        )
     )
-)
-
+end
+    
 local function swap(a, i, j)
     local tmp = a[i]
     a[i] = a[j]
@@ -64,13 +65,15 @@ if j then
         f_idx = terrain:addFace(
             table.unpack(face_vertices(face))
         )
-        terrain:setFaceTextureMap(
-            f_idx,
-            0, 0,
-            0, 1,
-            1, 1,
-            1, 0
-        )
+        if lib3d.texture then
+            terrain:setFaceTextureMap(
+                f_idx,
+                0, 0,
+                0, 1,
+                1, 1,
+                1, 0
+            )
+        end
     end
     for _, face in ipairs(j["banner"]) do
         f_idx = banner:addFace(
@@ -88,17 +91,23 @@ local sink = 0.4
 kartshape = lib3d.imposter.new()
 
 -- load kart textures
-KART_ANGLES = 40
-local kart_texture = {}
-for i = 0,KART_ANGLES-1 do
-    local f = "assets/kart/img-"..tostring(i)..".png.u"
-    kart_texture[i] = lib3d.texture.new(f, true)
+if lib3d.texture then
+    KART_ANGLES = 40
+    local kart_texture = {}
+    for i = 0,KART_ANGLES-1 do
+        local f = "assets/kart/img-"..tostring(i)..".png.u"
+        kart_texture[i] = lib3d.texture.new(f, true)
+    end
 end
 
 kartshape:setPosition(lib3d.point.new(0, 0, 0))
 kartshape:setRectangle(-KSIZE /2, -KSIZE * (1-sink), KSIZE /2, KSIZE * sink)
 kartshape:setZOffsets(0, 0, -2, -2) -- helps imposter appear above the floor
-kartshape:setTexture(lib3d.texture.new("assets/kart/img-0.png.u", true))
+
+if lib3d.texture then
+    kartshape:setTexture(lib3d.texture.new("assets/kart/img-0.png.u", true))
+    terrain:setTexture("assets/texture.png.u", true)
+end
 
 kartNode = n:addChildNode()
 kartNode:addImposter(kartshape)
@@ -208,9 +217,11 @@ kart = {
         scene:setCameraUp(0, 0, -1)
     
         -- set texture
-        local cam_reltheta = atan2(fv.y, fv.x) - atan2(self.f.y, self.f.x)
-        local kart_frame = math.floor(-cam_reltheta * KART_ANGLES / 2 / math.pi + 0.5) % KART_ANGLES
-        kartshape:setTexture(kart_texture[kart_frame])
+        if lib3d.texture then
+            local cam_reltheta = atan2(fv.y, fv.x) - atan2(self.f.y, self.f.x)
+            local kart_frame = math.floor(-cam_reltheta * KART_ANGLES / 2 / math.pi + 0.5) % KART_ANGLES
+            kartshape:setTexture(kart_texture[kart_frame])
+        end
     end,
 }
 rot = lib3d.matrix.newRotation(1,0,1,0)

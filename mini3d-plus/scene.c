@@ -1354,12 +1354,12 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 			);
 		else
 		#endif
-			fillQuad_zbuf(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, pattern);
+			fillQuad_zbuf(bitmap, rowstride, &tl, &tr, &br, &bl, pattern);
 	}
 	else
 	#endif
 	{
-		fillQuad(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, pattern);
+		fillQuad(bitmap, rowstride, &tl, &tr, &br, &bl, pattern);
 	}
 }
 
