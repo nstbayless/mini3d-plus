@@ -101,7 +101,13 @@ Texture* Texture_loadFromPath(const char* path, int greyscale, const char** oute
         // interpret png
         size_t len;
         int err;
-        spng_ctx* ctx = spng_ctx_new(0);
+        struct spng_alloc alloc = {
+            m3d_malloc,
+            m3d_realloc,
+            m3d_calloc,
+            m3d_free
+        };
+        spng_ctx* ctx = spng_ctx_new2(&alloc, 0);
         if (!ctx)
         {
             *outerr = "unable to create spng context";

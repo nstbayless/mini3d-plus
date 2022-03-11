@@ -1,3 +1,5 @@
+#include "../mini3d.h"
+
 #define MINIZ_EXPORT
 /* miniz.c 2.2.0 - public domain deflate/inflate, zlib-subset, ZIP reading/writing/appending, PNG writing
    See "unlicense" statement at the end of this file.
@@ -124,7 +126,7 @@
 /* If MINIZ_NO_TIME is specified then the ZIP archive functions will not be able to get the current time, or */
 /* get/set file times, and the C run-time funcs that get/set times won't be called. */
 /* The current downside is the times written to your archives will be from 1979. */
-/*#define MINIZ_NO_TIME */
+#define MINIZ_NO_TIME
 
 /* Define MINIZ_NO_ARCHIVE_APIS to disable all ZIP archive API's. */
 /*#define MINIZ_NO_ARCHIVE_APIS */
@@ -142,7 +144,7 @@
    Note if MINIZ_NO_MALLOC is defined then the user must always provide custom user alloc/free/realloc
    callbacks to the zlib and archive API's, and a few stand-alone helper API's which don't provide custom user
    functions (such as tdefl_compress_mem_to_heap() and tinfl_decompress_mem_to_heap()) won't work. */
-/*#define MINIZ_NO_MALLOC */
+#define MINIZ_NO_MALLOC
 
 #if defined(__TINYC__) && (defined(__linux) || defined(__linux__))
 /* TODO: Work around "error: include file 'sys\utime.h' when compiling with tcc on Linux */
@@ -529,9 +531,9 @@ typedef struct mz_dummy_time_t_tag
 #define MZ_ASSERT(x) assert(x)
 
 #ifdef MINIZ_NO_MALLOC
-#define MZ_MALLOC(x) NULL
-#define MZ_FREE(x) (void)x, ((void)0)
-#define MZ_REALLOC(p, x) NULL
+#define MZ_MALLOC(x) m3d_malloc(x)
+#define MZ_FREE(x) m3d_free(x)
+#define MZ_REALLOC(p, x) m3d_realloc(p, x)
 #else
 #define MZ_MALLOC(x) malloc(x)
 #define MZ_FREE(x) free(x)

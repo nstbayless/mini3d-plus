@@ -55,15 +55,15 @@
 #define FACE_CLIPPING 1
 
 // clip faces that are closer than this
-#define CLIP_EPSILON 1.3f
+#define CLIP_EPSILON 0.5f
 
 #include <stddef.h>
 #include <stdint.h>
 
 extern void* (*m3d_realloc)(void* ptr, size_t size);
-
-#define m3d_malloc(s) m3d_realloc(NULL, (s))
-#define m3d_free(ptr) m3d_realloc((ptr), 0)
+void* m3d_malloc(size_t size);
+void* m3d_calloc(size_t items, size_t size);
+void m3d_free(void* ptr);
 
 void mini3d_setRealloc(void* (*realloc)(void* ptr, size_t size));
 
