@@ -734,6 +734,18 @@ static int imposter_setRectangle(lua_State* L)
 	return 0;
 }
 
+static int imposter_setZOffsets(lua_State* L)
+{
+	Imposter3D* imposter = getImposter(1);
+	float z1 = pd->lua->getArgFloat(2);
+	float z2 = pd->lua->getArgFloat(3);
+	float z3 = pd->lua->getArgFloat(4);
+	float z4 = pd->lua->getArgFloat(5);
+	
+	Imposter3D_setZOffsets(imposter, z1, z2, z3, z4);
+	return 0;
+}
+
 #if ENABLE_TEXTURES
 static int imposter_setBitmap(lua_State* L)
 {
@@ -780,6 +792,7 @@ static const lua_reg lib3DImposter[] =
 	{ "__gc",			imposter_gc },
 	{ "setPosition",	imposter_setPosition },
 	{ "setRectangle", 	imposter_setRectangle },
+	{ "setZOffsets", 	imposter_setZOffsets },
 #if ENABLE_TEXTURES
 	{ "setTexture",		imposter_setBitmap },
 	#if ENABLE_TEXTURES_GREYSCALE

@@ -84,7 +84,7 @@ n2:addShape(terrain)
 n2:addShape(banner)
 
 local KSIZE = 4.5
-local sink = 0.2
+local sink = 0.4
 kartshape = lib3d.imposter.new()
 
 -- load kart textures
@@ -97,6 +97,7 @@ end
 
 kartshape:setPosition(lib3d.point.new(0, 0, 0))
 kartshape:setRectangle(-KSIZE /2, -KSIZE * (1-sink), KSIZE /2, KSIZE * sink)
+kartshape:setZOffsets(0, 0, -2, -2) -- helps imposter appear above the floor
 kartshape:setTexture(lib3d.texture.new("assets/kart/img-0.png.u", true))
 
 kartNode = n:addChildNode()
@@ -209,7 +210,6 @@ kart = {
         -- set texture
         local cam_reltheta = atan2(fv.y, fv.x) - atan2(self.f.y, self.f.x)
         local kart_frame = math.floor(-cam_reltheta * KART_ANGLES / 2 / math.pi + 0.5) % KART_ANGLES
-        print(cam_reltheta)
         kartshape:setTexture(kart_texture[kart_frame])
     end,
 }

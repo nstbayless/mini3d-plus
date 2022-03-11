@@ -1317,10 +1317,18 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 		return;
 	}
 	
-	Point3D tr = imposter->tl;
-	tr.x = imposter->br.x;
-	Point3D bl = imposter->br;
-	bl.x = imposter->tl.x;
+	Point3D tl = imposter->tl;
+	Point3D br = imposter->br;
+	Point3D tr = tl;
+	tr.x = br.x;
+	Point3D bl = br;
+	bl.x = tl.x;
+	
+	// FIXME: move this logic to imposter_update() instead.
+	tl.z += imposter->prototype->z1;
+	tr.z += imposter->prototype->z2;
+	br.z += imposter->prototype->z3;
+	bl.z += imposter->prototype->z4;
 	
 	#if ENABLE_TEXTURES
 	Point2D t1, t2, t3, t4;
@@ -1335,7 +1343,7 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 	{
 		#if ENABLE_TEXTURES
 		if (imposter->prototype->bitmap)
-			fillQuad_zt(bitmap, rowstride, &imposter->tl, &tr, &imposter->br, &bl, imposter->prototype->bitmap, t1, t2, t3, t4
+			fillQuad_zt(bitmap, rowstride, &tl, &tr, &br, &bl, imposter->prototype->bitmap, t1, t2, t3, t4
 			#if ENABLE_CUSTOM_PATTERNS
 			, patterns
 			#endif

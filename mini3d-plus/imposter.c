@@ -20,6 +20,10 @@ void Imposter3D_init(Imposter3D* imposter)
 	imposter->x2 = 1;
 	imposter->y1 = -1;
 	imposter->y2 = 1;
+	imposter->z1 = 0;
+	imposter->z2 = 0;
+	imposter->z3 = 0;
+	imposter->z4 = 0;
 	#if ENABLE_TEXTURES
 	imposter->bitmap = NULL;
 	
@@ -67,6 +71,14 @@ void Imposter3D_setRectangle(Imposter3D* imposter, float x1, float y1, float x2,
 	imposter->y1 = y1;
 	imposter->x2 = x2;
 	imposter->y2 = y2;
+}
+
+void Imposter3D_setZOffsets(Imposter3D* imposter, float z1, float z2, float z3, float z4)
+{
+	imposter->z1 = z1;
+	imposter->z2 = z2;
+	imposter->z3 = z3;
+	imposter->z4 = z4;
 }
 
 #if ENABLE_TEXTURES

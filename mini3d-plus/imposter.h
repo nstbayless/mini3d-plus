@@ -12,6 +12,7 @@ typedef struct
     int retainCount;
     Point3D center;
     float x1, x2, y1, y2;
+    float z1, z2, z3, z4;
     
     #if ENABLE_TEXTURES
     Texture* bitmap; // FIXME: rename to 'texture'
@@ -30,6 +31,7 @@ Imposter3D* Imposter3D_retain(Imposter3D* imposter);
 void Imposter3D_release(Imposter3D* imposter);
 void Imposter3D_setPosition(Imposter3D* imposter, Point3D* position);
 void Imposter3D_setRectangle(Imposter3D* imposter, float x1, float y1, float x2, float y2);
+void Imposter3D_setZOffsets(Imposter3D* imposter, float z1, float z2, float z3, float z4);
 
 #if ENABLE_TEXTURES
 // FIXME: rename to ..._setTexture
