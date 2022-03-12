@@ -23,7 +23,7 @@
 #define ENABLE_CUSTOM_PATTERNS 1
 
 // allow textured faces
-#define ENABLE_TEXTURES 0
+#define ENABLE_TEXTURES 1
 
 // allow textures to have non-opaque pixels
 #define ENABLE_TEXTURES_MASK 1

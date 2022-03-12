@@ -8,6 +8,11 @@
 
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC optimize ("O3")
+#pragma GCC optimize ("-fsingle-precision-constant")
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+
+// OPTIMIZE: consider using -ffast-math
+
 #endif
 
 #include <stdint.h>
@@ -793,7 +798,7 @@ LCDRowRange fillTriangle_zt(
 	
 	#if ENABLE_TEXTURES_GREYSCALE
 		// map lighting to range 0-255
-		uint8_t u8lightp = CLAMP(0.0f, 1.0f, lighting_weight) * 255.99;
+		uint8_t u8lightp = CLAMP(0.0f, 1.0f, lighting_weight) * 255.99f;
 		uint8_t u8light = CLAMP(0.0f, 1.0f, lighting) * (LIGHTING_PATTERN_COUNT - 0.001f);
 		// precompute
 		u8light = (((uint16_t)u8light * u8lightp) + 0x80) >> 8;

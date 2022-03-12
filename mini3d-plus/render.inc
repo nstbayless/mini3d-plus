@@ -46,6 +46,13 @@
 
 #define SYM(x) GLUE(x, SYM_ZTAGPL)
 
+#if defined(__GCC__) || defined(__clang__)
+#pragma GCC push_options
+#pragma GCC optimize("fif-conversion")
+#pragma GCC optimize("fif-conversion")
+__attribute__ ((hot))
+#endif
+
 static void
 SYM(drawFragment)(
 	uint32_t* row, uint16_t* zbrow, int x, int endx
@@ -102,7 +109,7 @@ SYM(drawFragment)(
     uint8_t* maskdata = texdata + (texh * texrowbytes);
     #endif
 
-	while ( x < endx )
+	while ( (unsigned)x < (unsigned)endx )
 	{
 		// read texture
         #ifdef RENDER_T
@@ -113,6 +120,7 @@ SYM(drawFragment)(
                 uint16_t vi = (v / ((w >> MAX(0, W_SHIFT - UV_SHIFT))|1)) >> MAX(0, UV_SHIFT - W_SHIFT);
                 vi %= texh; // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
             #else
+                // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
                 uint16_t ui = (u >> UV_SHIFT) % texw;
                 uint16_t vi = (v >> UV_SHIFT) % texh;
             #endif
@@ -217,6 +225,10 @@ SYM(drawFragment)(
 		_drawMaskPattern(p, swap(mask), color);
     }
 }
+
+#if defined(__GCC__) || defined(__clang__)
+#pragma GCC pop_options
+#endif
 
 #if !defined(RENDER_A) && !defined(RENDER_L)
 static void 

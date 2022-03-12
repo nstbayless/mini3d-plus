@@ -197,6 +197,14 @@ kart = {
         end
         
         self.pos = self.pos + self.v
+        
+        -- bounds
+        if self.pos.z < -100 then
+            self.pos = lib3d.point.new(0, 0, 160)
+            self.cam = lib3d.point.new(-1, 0, 0)
+            self.f = lib3d.point.new(-1, 0, 0)
+            self.v = lib3d.point.new(0.2, 0, 0)
+        end
     end,
     getTransform = function(self)
         local theta = atan2(self.f.y, self.f.x)

@@ -3,6 +3,7 @@
 
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC optimize ("O3")
+#pragma GCC optimize ("-ffast-math")
 #endif
 
 #if !defined(MIN)
@@ -134,8 +135,6 @@ test_sphere_triangle_bounding(
     Point3D* p3
 )
 {
-    // OPTIMIZE: this should be able to be done with zero branching.
-    
     Point3D min, max;
     min.x = MIN(MIN(p1->x, p2->x), p3->x) - r;
     min.y = MIN(MIN(p1->y, p2->y), p3->y) - r;
@@ -144,6 +143,19 @@ test_sphere_triangle_bounding(
     max.y = MAX(MAX(p1->y, p2->y), p3->y) + r;
     max.z = MAX(MAX(p1->z, p2->z), p3->z) + r;
     
+#ifndef BRANCH_BOUNDING
+    int o = sphere->x <= min.x;
+    o |= sphere->x >= max.x;
+    #ifndef BRANCH_BOUNDING_NX
+    // we branch here because we hope that most bounding checks are resolved by only the x coordinate.
+    if (o) return 1;
+    #endif
+    o |= sphere->y <= min.y;
+    o |= sphere->y >= max.y;
+    o |= sphere->z <= min.z;
+    o |= sphere->z >= max.z;
+    return o;
+#else
     if (sphere->x <= min.x) return 1;
     if (sphere->y <= min.y) return 1;
     if (sphere->z <= min.z) return 1;
@@ -152,6 +164,7 @@ test_sphere_triangle_bounding(
     if (sphere->z >= max.z) return 1;
     
     return 0;
+#endif
 }
 
 // return 1 if collision, and sets o_normal
