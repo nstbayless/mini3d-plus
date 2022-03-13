@@ -2,7 +2,6 @@
 // T: texture
 // A: alpha / semitransparent / masked textures
 // G: greyscale textures (not strictly black/white) and/or lit textures
-// H: lit textures (requires G)
 // L: greyscale textures (requires G)
 // P: projective texture mapping
 
@@ -33,16 +32,10 @@
     #define SYM_ZTAG SYM_ZTA
 #endif
 
-#ifdef RENDER_H
-    #define SYM_ZTAGH GLUE(SYM_ZTAG, h)
-#else
-    #define SYM_ZTAGH SYM_ZTAG
-#endif
-
 #ifdef RENDER_P
-    #define SYM_ZTAGP GLUE(SYM_ZTAGH, p)
+    #define SYM_ZTAGP GLUE(SYM_ZTAG, p)
 #else
-    #define SYM_ZTAGP SYM_ZTAGH
+    #define SYM_ZTAGP SYM_ZTAG
 #endif
 
 #ifdef RENDER_L
@@ -77,10 +70,7 @@ SYM(drawFragment)(
     , uvw_int2_t w, uvw_int2_t dwdx
 #endif
 #ifdef RENDER_G
-    #ifdef RENDER_H
-    , OPTU32(uint8_t) light, OPTU32(uint8_t) texp
-    #endif
-    , OPTU32(uint8_t) pattern_y
+    , OPTU32(uint8_t) light, OPTU32(uint8_t) texp, OPTU32(uint8_t) pattern_y
     #endif
 #else
     , uint32_t color
@@ -174,12 +164,12 @@ SYM(drawFragment)(
                     OPTU32(uint8_t) tex = texpix ? (LIGHTING_PATTERN_COUNT - 1) : 0;
                 #endif
                 OPTU32(uint8_t) combined;
-                #ifdef RENDER_H
+                // OPTIMIZE: make light != 0 a different functi.
+                if (light != 0)
                     combined = ((OPTU32(uint16_t))tex * texp + 0x80) >> 8;
-                    combined += light;
-                #else
+                else
                     combined = tex;
-                #endif
+                combined += light;
                 OPTU32(uint8_t) pattern_byte = 
                 #if ENABLE_CUSTOM_PATTERNS
                 (*pattern)
@@ -262,7 +252,7 @@ SYM(fillRange)(
     #ifdef RENDER_P
     , uvw_int2_t* wp, uvw_int2_t dwdy, uvw_int2_t dwdx
     #endif
-    #if defined(RENDER_G) && defined(RENDER_H)
+    #ifdef RENDER_G
     , uint8_t light, uint8_t texp
     #endif
 #else
@@ -330,34 +320,33 @@ SYM(fillRange)(
 
 	while ( y < endy )
 	{	
-        #ifdef RENDER_P
-            #define _ADD_P(x) x##p
-            #define _ADD_PL(x) x##pl
+        #if defined(RENDER_P)
+            #define drawFragment_ztag_OPT_p drawFragment_ztagp
+            #define drawFragment_ztg_OPT_p drawFragment_ztgp
+            #define drawFragment_tag_OPT_p drawFragment_tagp
+            #define drawFragment_tg_OPT_p drawFragment_tgp
+            #define drawFragment_ztagl_OPT_p drawFragment_ztagpl
+            #define drawFragment_ztgl_OPT_p drawFragment_ztgpl
+            #define drawFragment_tagl_OPT_p drawFragment_tagpl
+            #define drawFragment_tgl_OPT_p drawFragment_tgpl
+            #define drawFragment_zta_OPT_p drawFragment_ztap
+            #define drawFragment_zt_OPT_p drawFragment_ztp
+            #define drawFragment_ta_OPT_p drawFragment_tap
+            #define drawFragment_t_OPT_p drawFragment_tp
         #else
-            #define _ADD_P(x) x
-            #define _ADD_PL(x) x
+            #define drawFragment_ztag_OPT_p drawFragment_ztag
+            #define drawFragment_ztg_OPT_p drawFragment_ztg
+            #define drawFragment_tag_OPT_p drawFragment_tag
+            #define drawFragment_tg_OPT_p drawFragment_tg
+            #define drawFragment_ztagl_OPT_p drawFragment_ztagl
+            #define drawFragment_ztgl_OPT_p drawFragment_ztgl
+            #define drawFragment_tagl_OPT_p drawFragment_tagl
+            #define drawFragment_tgl_OPT_p drawFragment_tgl
+            #define drawFragment_zta_OPT_p drawFragment_zta
+            #define drawFragment_zt_OPT_p drawFragment_zt
+            #define drawFragment_ta_OPT_p drawFragment_ta
+            #define drawFragment_t_OPT_p drawFragment_t
         #endif
-        
-        #ifdef RENDER_H
-            #define _ADD_HP(x) _ADD_P(x##h)
-            #define _ADD_HPL(x) _ADD_PL(x##h)
-        #else
-            #define _ADD_HP(x) _ADD_P(x)
-            #define _ADD_HPL(x) _ADD_PL(x)
-        #endif
-        
-        #define drawFragment_ztag_OPT_p _ADD_HP(drawFragment_ztag)
-        #define drawFragment_ztg_OPT_p _ADD_HP(drawFragment_ztg)
-        #define drawFragment_tag_OPT_p _ADD_HP(drawFragment_tag)
-        #define drawFragment_tg_OPT_p _ADD_HP(drawFragment_tg_
-        #define drawFragment_ztagl_OPT_p _ADD_HPL(drawFragment_ztag)
-        #define drawFragment_ztgl_OPT_p _ADD_HPL(drawFragment_ztg)
-        #define drawFragment_tagl_OPT_p _ADD_HPL(drawFragment_tag)
-        #define drawFragment_tgl_OPT_p _ADD_HPL(drawFragment_tg)
-        #define drawFragment_zta_OPT_p _ADD_HP(drawFragment_zta)
-        #define drawFragment_zt_OPT_p _ADD_HP(drawFragment_zt)
-        #define drawFragment_ta_OPT_p _ADD_HP(drawFragment_ta)
-        #define drawFragment_t_OPT_p _ADD_HP(drawFragment_t)
         
         #if defined(RENDER_T) && defined(RENDER_Z) && defined(RENDER_G)
             #if ENABLE_TEXTURES_MASK
@@ -378,10 +367,7 @@ SYM(fillRange)(
                 #ifdef RENDER_P
                     , w, dwdx
                 #endif
-                #ifdef RENDER_H
-                , light, texp
-                #endif
-                , y % 8
+                , light, texp, y % 8
             );
         #elif defined(RENDER_T) && !defined(RENDER_Z) && defined(RENDER_G)
             #if ENABLE_TEXTURES_MASK
@@ -401,10 +387,7 @@ SYM(fillRange)(
                 #ifdef RENDER_P
                     , w, dwdx
                 #endif
-                #ifdef RENDER_H
-                , light, texp
-                #endif
-                , y%8
+                , light, texp, y%8
             );
         #elif defined(RENDER_T) && defined(RENDER_Z)
             #if ENABLE_TEXTURES_MASK
@@ -490,10 +473,6 @@ SYM(fillRange)(
 #undef drawFragment_zt_OPT_p
 #undef drawFragment_ta_OPT_p
 #undef drawFragment_t_OPT_p
-#undef _ADD_P
-#undef _ADD_PL
-#undef _ADD_HP
-#undef _ADD_HPL
 
 #endif
 
@@ -502,7 +481,6 @@ SYM(fillRange)(
 #undef SYM_ZT
 #undef SYM_ZTA
 #undef SYM_ZTAG
-#undef SYM_ZTAGH
 #undef SYM_ZTAGP
 #undef SYM_ZTAGPL
 #undef _GLUE
@@ -525,7 +503,4 @@ SYM(fillRange)(
 #endif
 #ifdef RENDER_L
     #undef RENDER_L
-#endif
-#ifdef RENDER_H
-    #undef RENDER_H
 #endif

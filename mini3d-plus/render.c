@@ -20,8 +20,6 @@
 
 // indicates the type has been optimized
 // to be a full word because it's faster.
-
-//#define OPTU32(x) uint32_t
 #define OPTU32(x) x
 
 #define LCD_ROWS 240
@@ -209,39 +207,7 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 				#define RENDER_G
 				#define RENDER_P
 				#include "render.inc"
-				
-				#define RENDER_Z
-				#define RENDER_T
-				#define RENDER_A
-				#define RENDER_G
-				#define RENDER_H
-				#define RENDER_L
-				#define RENDER_P
-				#include "render.inc"
-				
-				#define RENDER_Z
-				#define RENDER_T
-				#define RENDER_A
-				#define RENDER_G
-				#define RENDER_H
-				#define RENDER_P
-				#include "render.inc"
 			#endif
-			
-			#define RENDER_Z
-			#define RENDER_T
-			#define RENDER_G
-			#define RENDER_H
-			#define RENDER_L
-			#define RENDER_P
-			#include "render.inc"
-			
-			#define RENDER_Z
-			#define RENDER_T
-			#define RENDER_G
-			#define RENDER_H
-			#define RENDER_P
-			#include "render.inc"
 			
 			#define RENDER_Z
 			#define RENDER_T
@@ -295,21 +261,6 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 			#define RENDER_T
 			#define RENDER_A
 			#define RENDER_G
-			#define RENDER_H
-			#define RENDER_L
-			#include "render.inc"
-			
-			#define RENDER_Z
-			#define RENDER_T
-			#define RENDER_A
-			#define RENDER_G
-			#define RENDER_H
-			#include "render.inc"
-			
-			#define RENDER_Z
-			#define RENDER_T
-			#define RENDER_A
-			#define RENDER_G
 			#define RENDER_L
 			#include "render.inc"
 			
@@ -329,19 +280,6 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 		#define RENDER_Z
 		#define RENDER_T
 		#define RENDER_G
-		#include "render.inc"
-		
-		#define RENDER_Z
-		#define RENDER_T
-		#define RENDER_G
-		#define RENDER_H
-		#define RENDER_L
-		#include "render.inc"
-		
-		#define RENDER_Z
-		#define RENDER_T
-		#define RENDER_G
-		#define RENDER_H
 		#include "render.inc"
 	#endif
 	
@@ -868,35 +806,28 @@ LCDRowRange fillTriangle_zt(
 		// precompute
 		u8light = (((uint16_t)u8light * u8lightp) + 0x80) >> 8;
 		
-		#define fillRange_zt_or_ztg(fname, fname_g, fname_gh, ...) \
+		#define fillRange_zt_or_ztg(fname, fname_g, ...) \
 			if (u8lightp == 0 && fmt == 0) \
 			{ \
 				fname(__VA_ARGS__); \
 			} \
 			else \
 			{ \
-				if (u8lightp == 0) \
-				{ \
-					fname_g(__VA_ARGS__); \
-				} \
-				else \
-				{ \
-				    fname_gh(__VA_ARGS__, u8light, 0xff - u8lightp); \
-				}\
+				fname_g(__VA_ARGS__, u8light, 0xff - u8lightp); \
 			}
 	#else
-		#define fillRange_zt_or_ztg(fname, fname_g, fname_gh, ...) fname(__VA_ARGS__)
+		#define fillRange_zt_or_ztg(fname, fname_g, ...) fname(__VA_ARGS__)
 	#endif
 	
 	#if ENABLE_TEXTURES_PROJECTIVE
 		#define fillRange_zt_or_ztp(...) \
 		if (projective_texture_mapping) \
 		{ \
-			fillRange_zt_or_ztg(fillRange_ztp, fillRange_ztgp, fillRange_ztghp, __VA_ARGS__, &w, dwdy, dwdx); \
+			fillRange_zt_or_ztg(fillRange_ztp, fillRange_ztgp, __VA_ARGS__, &w, dwdy, dwdx); \
 		} \
 		else \
 		{ \
-			fillRange_zt_or_ztg(fillRange_zt, fillRange_ztg, fillRange_ztgh, __VA_ARGS__); \
+			fillRange_zt_or_ztg(fillRange_zt, fillRange_ztg, __VA_ARGS__); \
 		}
 	#else
 		#define fillRange_zt_or_ztp fillRange_ztg
