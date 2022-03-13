@@ -166,10 +166,14 @@ SYM(drawFragment)(
                 OPTU32(uint8_t) combined;
                 // OPTIMIZE: make light != 0 a different functi.
                 if (light != 0)
+                {
                     combined = ((OPTU32(uint16_t))tex * texp + 0x80) >> 8;
+                    combined += light;
+                }
                 else
+                {
                     combined = tex;
-                combined += light;
+                }
                 OPTU32(uint8_t) pattern_byte = 
                 #if ENABLE_CUSTOM_PATTERNS
                 (*pattern)
