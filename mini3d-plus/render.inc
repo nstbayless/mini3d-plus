@@ -70,7 +70,10 @@ SYM(drawFragment)(
     , uvw_int2_t w, uvw_int2_t dwdx
 #endif
 #ifdef RENDER_G
-    , OPTU32(uint8_t) light, OPTU32(uint8_t) texp, OPTU32(uint8_t) pattern_y
+    #if ENABLE_TEXTURES_LIGHTING
+    , OPTU32(uint8_t) light, OPTU32(uint8_t) texp
+    #endif
+    , OPTU32(uint8_t) pattern_y
     #endif
 #else
     , uint32_t color
@@ -164,13 +167,15 @@ SYM(drawFragment)(
                     OPTU32(uint8_t) tex = texpix ? (LIGHTING_PATTERN_COUNT - 1) : 0;
                 #endif
                 OPTU32(uint8_t) combined;
-                // OPTIMIZE: make light != 0 a different functi.
+                #if ENABLE_TEXTURES_LIGHTING
+                // OPTIMIZE: make light != 0 a different function.
                 if (light != 0)
                 {
                     combined = ((OPTU32(uint16_t))tex * texp + 0x80) >> 8;
                     combined += light;
                 }
                 else
+                #endif
                 {
                     combined = tex;
                 }
@@ -371,7 +376,10 @@ SYM(fillRange)(
                 #ifdef RENDER_P
                     , w, dwdx
                 #endif
-                , light, texp, y % 8
+                #if ENABLE_TEXTURES_LIGHTING
+                , light, texp
+                #endif
+                , y % 8
             );
         #elif defined(RENDER_T) && !defined(RENDER_Z) && defined(RENDER_G)
             #if ENABLE_TEXTURES_MASK
@@ -391,7 +399,10 @@ SYM(fillRange)(
                 #ifdef RENDER_P
                     , w, dwdx
                 #endif
-                , light, texp, y%8
+                #if ENABLE_TEXTURES_LIGHTING
+                , light, texp
+                #endif
+                , y%8
             );
         #elif defined(RENDER_T) && defined(RENDER_Z)
             #if ENABLE_TEXTURES_MASK

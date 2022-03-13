@@ -28,9 +28,12 @@
 // allow textures to have non-opaque pixels
 #define ENABLE_TEXTURES_MASK 1
 
-// allow textures to have lighting (optional) and intermediate colours (optional).
+// allow textures to have intermediate colours, and lighting if ENABLE_TEXTURES_LIGHTING is 1.
 // all will be dithered on final render.
 #define ENABLE_TEXTURES_GREYSCALE 1
+
+// allow textures to have lighting (requires ENABLE_TEXTURES_GREYSCALE)
+#define ENABLE_TEXTURES_LIGHTING 0
 
 // ignored if textures are disabled
 // if 1, textures are mapped with homogenous coordinates.
