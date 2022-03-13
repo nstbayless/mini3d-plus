@@ -19,6 +19,11 @@
 // This is not as well-supported as the z buffer. Some glitches may occur when using it.
 #define ENABLE_ORDERING_TABLE 0
 
+// ------
+
+// if true, only update odd rows on some frames and even rows on others.
+#define ENABLE_INTERLACE 0
+
 // allow shapes to have custom dither patterns (per-shape)
 #define ENABLE_CUSTOM_PATTERNS 1
 
@@ -33,7 +38,7 @@
 #define ENABLE_TEXTURES_GREYSCALE 1
 
 // allow textures to have lighting (requires ENABLE_TEXTURES_GREYSCALE)
-#define ENABLE_TEXTURES_LIGHTING 0
+#define ENABLE_TEXTURES_LIGHTING 1
 
 // ignored if textures are disabled
 // if 1, textures are mapped with homogenous coordinates.

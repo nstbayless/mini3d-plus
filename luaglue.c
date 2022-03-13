@@ -123,13 +123,33 @@ static int scene_getRoot(lua_State* L)
 	pd->lua->pushObject(Scene3D_getRootNode(scene), "lib3d.scenenode", 0);
 	return 1;
 }
+#if ENABLE_INTERLACE
+static uint8_t backbuff[LCD_ROWS * LCD_ROWSIZE];
+
+static inline void
+clear_backbuff_interlaced(void)
+{
+	for (size_t i = getInterlace(); i < LCD_ROWS; i += 2)
+	{
+		memset(backbuff + (LCD_ROWSIZE * i), 0, LCD_ROWSIZE);
+		pd->graphics->markUpdatedRows(i, i);
+	}
+}
+#endif
 
 static int scene_draw(lua_State* L)
 {
 	Scene3D* scene = getScene(1);
 	
+	#if !ENABLE_INTERLACE
 	Scene3D_draw(scene, pd->graphics->getFrame(), LCD_ROWSIZE);
 	pd->graphics->markUpdatedRows(0, LCD_ROWS-1); // XXX
+	#else
+	setInterlace(!getInterlace());
+	clear_backbuff_interlaced();
+	Scene3D_draw(scene, &backbuff, LCD_ROWSIZE);
+	memcpy(pd->graphics->getFrame(), backbuff, LCD_ROWS * LCD_ROWSIZE);
+	#endif
 	
 	return 0;
 }

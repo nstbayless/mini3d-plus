@@ -81,6 +81,19 @@ Pattern patterns[LIGHTING_PATTERN_COUNT] =
 	{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }
 };
 
+#if ENABLE_INTERLACE
+static int interlace_frame;
+void setInterlace(int i)
+{
+	interlace_frame = !!i;
+}
+
+int getInterlace(void)
+{
+	return interlace_frame;
+}
+#endif
+
 #if ENABLE_Z_BUFFER
 static uint16_t zbuf[LCD_COLUMNS*LCD_ROWS];
 static float zscale;

@@ -357,95 +357,104 @@ SYM(fillRange)(
             #define drawFragment_t_OPT_p drawFragment_t
         #endif
         
-        #if defined(RENDER_T) && defined(RENDER_Z) && defined(RENDER_G)
-            #if ENABLE_TEXTURES_MASK
-            (hasmask
-                ? (!fmt ? drawFragment_ztag_OPT_p : drawFragment_ztagl_OPT_p)
-                : (!fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)
-            )(
-            #else
-            (!fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)(
-            #endif
-                (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
-                z, dzdx,
-                u, dudx, v, dvdx,
-                bmdata, rowbytes, width, height
-                #if ENABLE_CUSTOM_PATTERNS
-                , pattern
-                #endif
-                #ifdef RENDER_P
-                    , w, dwdx
-                #endif
-                #if ENABLE_TEXTURES_LIGHTING
-                , light, texp
-                #endif
-                , y % 8
-            );
-        #elif defined(RENDER_T) && !defined(RENDER_Z) && defined(RENDER_G)
-            #if ENABLE_TEXTURES_MASK
-            (hasmask
-                ? (!fmt ? drawFragment_tag_OPT_p : drawFragment_tagl_OPT_p)
-                : (!fmt ? drawFragment_tg_OPT_p : drawFragment_tgl_OPT_p)
-            )(
-            #else
-            (!fmt ? drawFragment_tg_OPT_p : drawFragment_tgl_OPT_p)(
-            #endif
-                (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
-                u, dudx, v, dvdx,
-                bmdata, rowbytes, width, height
-                #if ENABLE_CUSTOM_PATTERNS
-                , pattern
-                #endif
-                #ifdef RENDER_P
-                    , w, dwdx
-                #endif
-                #if ENABLE_TEXTURES_LIGHTING
-                , light, texp
-                #endif
-                , y%8
-            );
-        #elif defined(RENDER_T) && defined(RENDER_Z)
-            #if ENABLE_TEXTURES_MASK
-            (hasmask ? drawFragment_zta_OPT_p : drawFragment_zt_OPT_p)(
-            #else
-            drawFragment_zt_OPT_p(
-            #endif
-                (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
-                z, dzdx,
-                u, dudx, v, dvdx,
-                bmdata, rowbytes, width, height
-                #if ENABLE_CUSTOM_PATTERNS
-                , pattern
-                #endif
-                #ifdef RENDER_P
-                    , w, dwdx
-                #endif
-            );
-        #elif defined(RENDER_T) && !defined(RENDER_Z)
-            #if ENABLE_TEXTURES_MASK
-            (hasmask ? drawFragment_ta_OPT_p : drawFragment_t_OPT_p)(
-            #else
-            drawFragment_t_OPT_p(
-            #endif
-                (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
-                u, dudx, v, dvdx,
-                bmdata, rowbytes, width, height
-                #if ENABLE_CUSTOM_PATTERNS
-                , pattern
-                #endif
-                #ifdef RENDER_P
-                    , w, dwdx
-                #endif
-            );
-        #elif defined(RENDER_Z) && !defined(RENDER_T)
-            // no texture
-            uint8_t p = pattern[y%8];
-            uint32_t color = (p<<24) | (p<<16) | (p<<8) | p;
-            drawFragment_z(
-                (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
-                z, dzdx, color
-            );
+        #if ENABLE_INTERLACE
+        const int perform_draw = (y % 2 == (interlace_frame & 1));
+        #else
+        const int perform_draw = 1;
         #endif
+        
+        if (perform_draw)
+        {
+            #if defined(RENDER_T) && defined(RENDER_Z) && defined(RENDER_G)
+                #if ENABLE_TEXTURES_MASK
+                (hasmask
+                    ? (!fmt ? drawFragment_ztag_OPT_p : drawFragment_ztagl_OPT_p)
+                    : (!fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)
+                )(
+                #else
+                (!fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)(
+                #endif
+                    (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
+                    z, dzdx,
+                    u, dudx, v, dvdx,
+                    bmdata, rowbytes, width, height
+                    #if ENABLE_CUSTOM_PATTERNS
+                    , pattern
+                    #endif
+                    #ifdef RENDER_P
+                        , w, dwdx
+                    #endif
+                    #if ENABLE_TEXTURES_LIGHTING
+                    , light, texp
+                    #endif
+                    , y % 8
+                );
+            #elif defined(RENDER_T) && !defined(RENDER_Z) && defined(RENDER_G)
+                #if ENABLE_TEXTURES_MASK
+                (hasmask
+                    ? (!fmt ? drawFragment_tag_OPT_p : drawFragment_tagl_OPT_p)
+                    : (!fmt ? drawFragment_tg_OPT_p : drawFragment_tgl_OPT_p)
+                )(
+                #else
+                (!fmt ? drawFragment_tg_OPT_p : drawFragment_tgl_OPT_p)(
+                #endif
+                    (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
+                    u, dudx, v, dvdx,
+                    bmdata, rowbytes, width, height
+                    #if ENABLE_CUSTOM_PATTERNS
+                    , pattern
+                    #endif
+                    #ifdef RENDER_P
+                        , w, dwdx
+                    #endif
+                    #if ENABLE_TEXTURES_LIGHTING
+                    , light, texp
+                    #endif
+                    , y%8
+                );
+            #elif defined(RENDER_T) && defined(RENDER_Z)
+                #if ENABLE_TEXTURES_MASK
+                (hasmask ? drawFragment_zta_OPT_p : drawFragment_zt_OPT_p)(
+                #else
+                drawFragment_zt_OPT_p(
+                #endif
+                    (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
+                    z, dzdx,
+                    u, dudx, v, dvdx,
+                    bmdata, rowbytes, width, height
+                    #if ENABLE_CUSTOM_PATTERNS
+                    , pattern
+                    #endif
+                    #ifdef RENDER_P
+                        , w, dwdx
+                    #endif
+                );
+            #elif defined(RENDER_T) && !defined(RENDER_Z)
+                #if ENABLE_TEXTURES_MASK
+                (hasmask ? drawFragment_ta_OPT_p : drawFragment_t_OPT_p)(
+                #else
+                drawFragment_t_OPT_p(
+                #endif
+                    (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
+                    u, dudx, v, dvdx,
+                    bmdata, rowbytes, width, height
+                    #if ENABLE_CUSTOM_PATTERNS
+                    , pattern
+                    #endif
+                    #ifdef RENDER_P
+                        , w, dwdx
+                    #endif
+                );
+            #elif defined(RENDER_Z) && !defined(RENDER_T)
+                // no texture
+                uint8_t p = pattern[y%8];
+                uint32_t color = (p<<24) | (p<<16) | (p<<8) | p;
+                drawFragment_z(
+                    (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
+                    z, dzdx, color
+                );
+            #endif
+        }
 		
 		x1 += dx1;
 		x2 += dx2;

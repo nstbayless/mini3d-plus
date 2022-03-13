@@ -60,4 +60,9 @@ LCDRowRange fillQuad_zt(
 
 #endif
 
+#if ENABLE_INTERLACE
+void setInterlace(int i);
+int getInterlace(void);
+#endif
+
 #endif /* render_h */
