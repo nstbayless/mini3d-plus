@@ -203,7 +203,7 @@ kart = {
             self.pos = lib3d.point.new(0, 0, 160)
             self.cam = lib3d.point.new(-1, 0, 0)
             self.f = lib3d.point.new(-1, 0, 0)
-            self.v = lib3d.point.new(0.2, 0, 0)
+            self.v = lib3d.point.new(0.2, 0, -3.5)
         end
     end,
     getTransform = function(self)
