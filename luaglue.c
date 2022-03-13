@@ -27,6 +27,10 @@ static const lua_reg lib3DPoint[];
 static const lua_reg lib3DMatrix[];
 static const lua_reg lib3DMath[];
 
+#if ENABLE_INTERLACE
+static const lua_reg lib3DInterlace[];
+#endif
+
 #if ENABLE_TEXTURES
 static const lua_reg lib3DTexture[];
 #endif
@@ -61,6 +65,11 @@ void register3D(PlaydateAPI* playdate)
 	
 	if ( !pd->lua->registerClass("lib3d.math", lib3DMath, NULL, 0, &err) )
 		pd->system->logToConsole("%s:%i: registerClass failed, %s", __FILE__, __LINE__, err);
+		
+	#if ENABLE_INTERLACE
+	if ( !pd->lua->registerClass("lib3d.interlace", lib3DInterlace, NULL, 0, &err) )
+		pd->system->logToConsole("%s:%i: registerClass failed, %s", __FILE__, __LINE__, err);
+	#endif
 		
 	#if ENABLE_TEXTURES
 	if ( !pd->lua->registerClass("lib3d.texture", lib3DTexture, NULL, 0, &err) )
@@ -129,7 +138,10 @@ static uint8_t backbuff[LCD_ROWS * LCD_ROWSIZE];
 static inline void
 clear_backbuff_interlaced(void)
 {
-	for (size_t i = getInterlace(); i < LCD_ROWS; i += 2)
+	int step = getInterlaceEnabled() + 1;
+	int start = 0;
+	if (getInterlaceEnabled()) start = getInterlace();
+	for (size_t i = start; i < LCD_ROWS; i += step)
 	{
 		memset(backbuff + (LCD_ROWSIZE * i), 0, LCD_ROWSIZE);
 		pd->graphics->markUpdatedRows(i, i);
@@ -145,9 +157,17 @@ static int scene_draw(lua_State* L)
 	Scene3D_draw(scene, pd->graphics->getFrame(), LCD_ROWSIZE);
 	pd->graphics->markUpdatedRows(0, LCD_ROWS-1); // XXX
 	#else
-	setInterlace(!getInterlace());
-	clear_backbuff_interlaced();
-	Scene3D_draw(scene, &backbuff, LCD_ROWSIZE);
+	if (getInterlaceEnabled())
+	{
+		setInterlace(!getInterlace());
+		clear_backbuff_interlaced();
+		Scene3D_draw(scene, &backbuff[0], LCD_ROWSIZE);
+	}
+	else
+	{
+		clear_backbuff_interlaced();
+		Scene3D_draw(scene, &backbuff[0], LCD_ROWSIZE);
+	}
 	memcpy(pd->graphics->getFrame(), backbuff, LCD_ROWS * LCD_ROWSIZE);
 	#endif
 	
@@ -1110,6 +1130,27 @@ static const lua_reg lib3DMath[] =
 	{ NULL,				NULL }
 };
 
+#if ENABLE_INTERLACE
+static int interlace_enable(lua_State* L)
+{
+	int enable = (pd->lua->getArgType(1, NULL) == kTypeNil || pd->lua->getArgBool(1));
+	setInterlaceEnabled(enable);
+	return 0;
+}
+
+static int interlace_get_enable(lua_State* L)
+{
+	pd->lua->pushBool(getInterlaceEnabled());
+	return 1;
+}
+
+static const lua_reg lib3DInterlace[] =
+{
+	{ "setEnabled", interlace_enable },
+	{ "getEnabled", interlace_get_enable },
+	{ NULL,				NULL }
+};
+#endif
 
 #if ENABLE_TEXTURES
 static int texture_new(lua_State* L)

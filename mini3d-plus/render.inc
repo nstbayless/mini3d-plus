@@ -358,7 +358,7 @@ SYM(fillRange)(
         #endif
         
         #if ENABLE_INTERLACE
-        const int perform_draw = (y % 2 == (interlace_frame & 1));
+        const int perform_draw = (y % 2 != interlace_frame);
         #else
         const int perform_draw = 1;
         #endif

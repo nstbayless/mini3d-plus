@@ -243,6 +243,13 @@ t = 0
 
 playdate.display.setRefreshRate(20)
 
+function playdate.AButtonDown()
+    if lib3d.interlace then
+        lib3d.interlace.setEnabled(not lib3d.interlace.getEnabled())
+        print("toggle interlace:", lib3d.interlace.getEnabled())
+    end
+end
+
 function playdate.update()
     
     kart:input()
@@ -254,7 +261,11 @@ function playdate.update()
     
     kart:setShoulderCamera(scene)
 	
-	gfx.clear(gfx.kColorBlack)
+	if not lib3d.interlace then
+        -- if interlace is enabled, the scene clears to black automatically,
+        -- so we don't need this.
+        gfx.clear(gfx.kColorBlack)
+    end
 	scene:draw()
     --scene:drawZBuff()
     playdate.drawFPS(0,0)

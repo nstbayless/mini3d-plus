@@ -21,8 +21,10 @@
 
 // ------
 
+// this OPTIONALLY enables interlace mode.
 // if true, only update odd rows on some frames and even rows on others.
-#define ENABLE_INTERLACE 0
+// you must also call lib3d.interlace.enable(1) to set this from lua. (!)
+#define ENABLE_INTERLACE 1
 
 // allow shapes to have custom dither patterns (per-shape)
 #define ENABLE_CUSTOM_PATTERNS 1

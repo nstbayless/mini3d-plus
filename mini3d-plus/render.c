@@ -82,15 +82,30 @@ Pattern patterns[LIGHTING_PATTERN_COUNT] =
 };
 
 #if ENABLE_INTERLACE
-static int interlace_frame;
+
+// if bit 1 is set, then interface is DISABLED
+// bit 0 controls the line to render (even / odd)
+static int interlace_frame = 3;
 void setInterlace(int i)
 {
-	interlace_frame = !!i;
+	int set = !i;
+	interlace_frame = (interlace_frame & ~1) | set;
 }
 
 int getInterlace(void)
 {
-	return interlace_frame;
+	return !(interlace_frame & 1);
+}
+
+void setInterlaceEnabled(int i)
+{
+	int set = (!i) << 1;
+	interlace_frame = (interlace_frame & ~2) | (set);
+}
+
+int getInterlaceEnabled(void)
+{
+	return !(interlace_frame & 2);
 }
 #endif
 
