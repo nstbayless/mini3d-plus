@@ -154,9 +154,7 @@ static int scene_draw(lua_State* L)
 	Scene3D* scene = getScene(1);
 	
 	#if ENABLE_TEXTURES && ENABLE_TEXTURES_PROJECTIVE && PRECOMPUTE_PROJECTION
-	#if !defined(__GNUC__) && !defined(__clang__)
 	precomputeProjectionTable();
-	#endif
 	#endif
 	
 	#if !ENABLE_INTERLACE
