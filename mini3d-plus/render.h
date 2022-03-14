@@ -67,4 +67,9 @@ int getInterlaceEnabled(void);
 int getInterlace(void);
 #endif
 
+#if ENABLE_RENDER_DISTANCE_MAX
+void setRenderDistanceMax(float f);
+float getRenderDistanceMax();
+#endif
+
 #endif /* render_h */

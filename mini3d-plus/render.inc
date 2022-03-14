@@ -8,6 +8,27 @@
 #define _GLUE(a, b) a##b
 #define GLUE(a, b) _GLUE(a, b)
 
+#ifdef RENDER
+    #if (RENDER) & RZ
+        #define RENDER_Z
+    #endif
+    #if (RENDER) & RT
+        #define RENDER_T
+    #endif
+    #if (RENDER) & RA
+        #define RENDER_A
+    #endif
+    #if (RENDER) & RG
+        #define RENDER_G
+    #endif
+    #if (RENDER) & RP
+        #define RENDER_P
+    #endif
+    #if (RENDER) & RL
+        #define RENDER_L
+    #endif
+#endif
+
 #ifdef RENDER_Z
     #define SYM_Z _z
 #else
@@ -528,3 +549,5 @@ SYM(fillRange)(
 #ifdef RENDER_L
     #undef RENDER_L
 #endif
+
+#undef RENDER

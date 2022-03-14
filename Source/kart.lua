@@ -11,6 +11,10 @@ scene = lib3d.scene.new()
 scene:setCameraOrigin(0, 5, 6)
 scene:setLight(0, 0, 1)
 
+if lib3d.renderer.setRenderDistance then
+    lib3d.renderer.setRenderDistance(100.0)
+end
+
 local rad_to_deg = 180 / math.pi
 
 n = scene:getRootNode()
@@ -244,9 +248,8 @@ t = 0
 playdate.display.setRefreshRate(20)
 
 function playdate.AButtonDown()
-    if lib3d.interlace then
-        lib3d.interlace.setEnabled(not lib3d.interlace.getEnabled())
-        print("toggle interlace:", lib3d.interlace.getEnabled())
+    if lib3d.renderer.setInterlaceEnabled then
+        lib3d.renderer.setInterlaceEnabled(not lib3d.renderer.getInterlaceEnabled())
     end
 end
 
@@ -261,7 +264,7 @@ function playdate.update()
     
     kart:setShoulderCamera(scene)
 	
-	if not lib3d.interlace then
+	if not lib3d.renderer.getInterlaceEnabled then -- [sic]
         -- if interlace is enabled, the scene clears to black automatically,
         -- so we don't need this.
         gfx.clear(gfx.kColorBlack)

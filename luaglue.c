@@ -26,10 +26,7 @@ static const lua_reg lib3DImposter[];
 static const lua_reg lib3DPoint[];
 static const lua_reg lib3DMatrix[];
 static const lua_reg lib3DMath[];
-
-#if ENABLE_INTERLACE
-static const lua_reg lib3DInterlace[];
-#endif
+static const lua_reg lib3DRenderer[];
 
 #if ENABLE_TEXTURES
 static const lua_reg lib3DTexture[];
@@ -66,10 +63,8 @@ void register3D(PlaydateAPI* playdate)
 	if ( !pd->lua->registerClass("lib3d.math", lib3DMath, NULL, 0, &err) )
 		pd->system->logToConsole("%s:%i: registerClass failed, %s", __FILE__, __LINE__, err);
 		
-	#if ENABLE_INTERLACE
-	if ( !pd->lua->registerClass("lib3d.interlace", lib3DInterlace, NULL, 0, &err) )
+	if ( !pd->lua->registerClass("lib3d.renderer", lib3DRenderer, NULL, 0, &err) )
 		pd->system->logToConsole("%s:%i: registerClass failed, %s", __FILE__, __LINE__, err);
-	#endif
 		
 	#if ENABLE_TEXTURES
 	if ( !pd->lua->registerClass("lib3d.texture", lib3DTexture, NULL, 0, &err) )
@@ -1144,13 +1139,31 @@ static int interlace_get_enable(lua_State* L)
 	return 1;
 }
 
-static const lua_reg lib3DInterlace[] =
+static int set_render_distance(lua_State* L)
 {
-	{ "setEnabled", interlace_enable },
-	{ "getEnabled", interlace_get_enable },
+	setRenderDistanceMax(pd->lua->getArgFloat(1));
+	return 0;
+}
+
+static int get_render_distance(lua_State* L)
+{
+	pd->lua->pushFloat(getRenderDistanceMax());
+	return 1;
+}
+#endif
+
+static const lua_reg lib3DRenderer[] =
+{
+	#if ENABLE_INTERLACE
+	{ "setInterlaceEnabled", interlace_enable },
+	{ "getInterlaceEnabled", interlace_get_enable },
+	#endif
+	#if ENABLE_RENDER_DISTANCE_MAX
+	{ "setRenderDistance", set_render_distance },
+	{ "getRenderDistance", get_render_distance },
+	#endif
 	{ NULL,				NULL }
 };
-#endif
 
 #if ENABLE_TEXTURES
 static int texture_new(lua_State* L)

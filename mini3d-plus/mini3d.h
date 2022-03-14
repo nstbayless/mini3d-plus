@@ -66,6 +66,11 @@
 // clip faces that are closer than this
 #define CLIP_EPSILON 0.5f
 
+// do not render anything beyond a distance specified
+// by lua: mini3d.renderer.setRenderDistance()
+// set this to 2 to enable only for textured surfaces
+#define ENABLE_RENDER_DISTANCE_MAX 0
+
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>

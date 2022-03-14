@@ -81,8 +81,24 @@ Pattern patterns[LIGHTING_PATTERN_COUNT] =
 	{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff }
 };
 
-#if ENABLE_INTERLACE
+#if ENABLE_RENDER_DISTANCE_MAX
+float render_distance_max = 100000000000000.0f;
+void setRenderDistanceMax(float f)
+{
+	render_distance_max = f;
+}
+float getRenderDistanceMax()
+{
+	return render_distance_max;
+}
+static inline int
+render_distance_bounds(Point3D* p1, Point3D* p2, Point3D* p3)
+{
+	return p1->z > render_distance_max && p2->z > render_distance_max && p3->z > render_distance_max;
+}
+#endif
 
+#if ENABLE_INTERLACE
 // if bit 1 is set, then interface is DISABLED
 // bit 0 controls the line to render (even / odd)
 static int interlace_frame = 3;
@@ -204,127 +220,93 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 	}
 }
 
+#define RZ 1
+#define RT 2
+#define RA 4
+#define RG 8
+#define RP 16
+#define RL 32
+
 #if ENABLE_TEXTURES_PROJECTIVE
 	#if ENABLE_TEXTURES && ENABLE_TEXTURES_MASK
-		#define RENDER_T
-		#define RENDER_A
-		#define RENDER_P
+		#define RENDER RT | RA | RP
 		#include "render.inc"
 	#endif
 
 	#if ENABLE_TEXTURES
-		#define RENDER_T
-		#define RENDER_P
+		#define RENDER RT | RP
 		#include "render.inc"
 	#endif
 
 	#if ENABLE_Z_BUFFER
 		#if ENABLE_TEXTURES && ENABLE_TEXTURES_GREYSCALE
 			#if ENABLE_TEXTURES_MASK
-				#define RENDER_Z
-				#define RENDER_T
-				#define RENDER_A
-				#define RENDER_G
-				#define RENDER_L
-				#define RENDER_P
+				#define RENDER RZ | RT | RA | RG | RL | RP
 				#include "render.inc"
 				
-				#define RENDER_Z
-				#define RENDER_T
-				#define RENDER_A
-				#define RENDER_G
-				#define RENDER_P
+				#define RENDER RZ | RT | RA | RG | RP
 				#include "render.inc"
 			#endif
 			
-			#define RENDER_Z
-			#define RENDER_T
-			#define RENDER_G
-			#define RENDER_L
-			#define RENDER_P
+			#define RENDER RZ | RT | RG | RL | RP
 			#include "render.inc"
 			
-			#define RENDER_Z
-			#define RENDER_T
-			#define RENDER_G
-			#define RENDER_P
+			#define RENDER RZ | RT | RG | RP
 			#include "render.inc"
 		#endif
 		
 		#if ENABLE_TEXTURES && ENABLE_TEXTURES_MASK
-			#define RENDER_Z
-			#define RENDER_T
-			#define RENDER_A
-			#define RENDER_P
+			#define RENDER RZ | RT | RA | RP
 			#include "render.inc"
 		#endif
 
 		#if ENABLE_TEXTURES
-			#define RENDER_Z
-			#define RENDER_T
-			#define RENDER_P
+			#define RENDER RZ | RT | RP
 			#include "render.inc"
 		#endif
 	#endif
 #endif
 
 #if ENABLE_TEXTURES && ENABLE_TEXTURES_MASK
-	#define RENDER_T
-	#define RENDER_A
+	#define RENDER RT | RA
 	#include "render.inc"
 #endif
 
 #if ENABLE_TEXTURES
-	#define RENDER_T
+	#define RENDER RT
 	#include "render.inc"
 #endif
 
 #if ENABLE_Z_BUFFER
-	#define RENDER_Z
+	#define RENDER RZ
 	#include "render.inc"
 	
 	#if ENABLE_TEXTURES && ENABLE_TEXTURES_GREYSCALE
 		#if ENABLE_TEXTURES_MASK
-			#define RENDER_Z
-			#define RENDER_T
-			#define RENDER_A
-			#define RENDER_G
-			#define RENDER_L
+			#define RENDER RZ | RT | RA | RG | RL
 			#include "render.inc"
 			
-			#define RENDER_Z
-			#define RENDER_T
-			#define RENDER_A
-			#define RENDER_G
+			#define RENDER RZ | RT | RA | RG
 			#include "render.inc"
 		#endif
 		
-		#define RENDER_Z
-		#define RENDER_T
-		#define RENDER_G
-		#define RENDER_L
+		#define RENDER RZ | RT | RG | RL
 		#include "render.inc"
 		
-		#define RENDER_Z
-		#define RENDER_T
-		#define RENDER_G
+		#define RENDER RZ | RT | RG
 		#include "render.inc"
 	#endif
 	
 	#if ENABLE_TEXTURES && ENABLE_TEXTURES_MASK
-		#define RENDER_Z
-		#define RENDER_T
-		#define RENDER_A
+		#define RENDER RZ | RT | RA
 		#include "render.inc"
 	#endif
 
 	#if ENABLE_TEXTURES
-		#define RENDER_Z
-		#define RENDER_T
+		#define RENDER RZ | RT
 		#include "render.inc"
 	#endif
 #endif
-
 
 static inline int32_t slope(float x1, float y1, float x2, float y2, const int shift)
 {
@@ -596,6 +578,10 @@ LCDRowRange fillTriangle(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p
 	
 	sortTri(&p1, &p2, &p3);
 	
+	#if ENABLE_RENDER_DISTANCE_MAX == 1
+	if (render_distance_bounds(p1, p2, p3)) return (LCDRowRange){ 0, 0 };;
+	#endif
+	
 	int endy = MIN(LCD_ROWS, p3->y);
 	
 	if ( p1->y > LCD_ROWS || endy < 0 )
@@ -632,6 +618,10 @@ LCDRowRange fillTriangle(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p
 LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, uint8_t pattern[8])
 {
 	sortTri(&p1, &p2, &p3);
+	
+	#if ENABLE_RENDER_DISTANCE_MAX == 1
+	if (render_distance_bounds(p1, p2, p3)) return (LCDRowRange){ 0, 0 };
+	#endif
 	
 	int endy = MIN(LCD_ROWS, p3->y);
 	int det = (p3->x - p1->x) * (p2->y - p1->y) - (p2->x - p1->x) * (p3->y - p1->y);
@@ -704,6 +694,11 @@ LCDRowRange fillTriangle_zt(
 )
 {
 	sortTri_t(&p1, &p2, &p3, &t1, &t2, &t3);
+	
+	#if ENABLE_RENDER_DISTANCE_MAX
+	if (render_distance_bounds(p1, p2, p3)) return (LCDRowRange){ 0, 0 };
+	#endif
+	
 	int endy = MIN(LCD_ROWS, p3->y);
 	int det = (p3->x - p1->x) * (p2->y - p1->y) - (p2->x - p1->x) * (p3->y - p1->y);
 	if ( p1->y > LCD_ROWS || endy < 0 || det == 0 )
