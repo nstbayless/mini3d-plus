@@ -153,6 +153,12 @@ static int scene_draw(lua_State* L)
 {
 	Scene3D* scene = getScene(1);
 	
+	#if ENABLE_TEXTURES && ENABLE_TEXTURES_PROJECTIVE && PRECOMPUTE_PROJECTION
+	#if !defined(__GNUC__) && !defined(__clang__)
+	precomputeProjectionTable();
+	#endif
+	#endif
+	
 	#if !ENABLE_INTERLACE
 	Scene3D_draw(scene, pd->graphics->getFrame(), LCD_ROWSIZE);
 	pd->graphics->markUpdatedRows(0, LCD_ROWS-1); // XXX

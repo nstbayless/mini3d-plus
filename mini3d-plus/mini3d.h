@@ -63,6 +63,10 @@
 // (e.g. if textures are always far from the camera, or always orthogonal to it e.g. imposters)
 #define ENABLE_TEXTURES_PROJECTIVE 1
 
+// requires ENABLE_TEXTURES_PROJECTIVE
+// skips a division step by using a large lookup table
+#define PRECOMPUTE_PROJECTION 0
+
 // Only applies if if ENABLE_TEXTURES_PROJECTIVE.
 // Value in the range (0, 1).
 // Only faces whose total z ratio (from closest to furthest point)

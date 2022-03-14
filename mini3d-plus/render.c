@@ -98,6 +98,39 @@ render_distance_bounds(Point3D* p1, Point3D* p2, Point3D* p3)
 }
 #endif
 
+#if ENABLE_TEXTURES && ENABLE_TEXTURES_PROJECTIVE && PRECOMPUTE_PROJECTION
+
+
+#define PROJECTION_FIDELITY 11
+#define PROJECTION_FIDELITY_B 18
+#define DIVISION_TABLE_C (2 << PROJECTION_FIDELITY)
+static int projectionTablePrecomputed = 0;
+static uint32_t projection_table[DIVISION_TABLE_C];
+
+#if defined(__GNUC__) || defined(__clang__)
+void __attribute__((constructor)) precomputeProjectionTable(void);
+__attribute__((constructor))
+#endif
+void precomputeProjectionTable(void)
+{
+	if (projectionTablePrecomputed != 0) return;
+	projectionTablePrecomputed = 1;
+	for (size_t i = 0; i < DIVISION_TABLE_C; ++i)
+	{
+		projection_table[i] = (1 << PROJECTION_FIDELITY_B) / MAX(i, 1);
+	}
+	projection_table[0] *= 2;
+}
+
+static inline uint32_t getProjectionMult(uint32_t divisor)
+{
+	divisor >>= (W_SHIFT - PROJECTION_FIDELITY);
+	divisor = MIN(divisor, DIVISION_TABLE_C-1);
+	return projection_table[divisor];
+}
+
+#endif
+
 #if ENABLE_INTERLACE
 // if bit 1 is set, then interface is DISABLED
 // bit 0 controls the line to render (even / odd)
@@ -885,7 +918,7 @@ LCDRowRange fillTriangle_zt(
 			fillRange_zt_or_ztg(fillRange_zt, fillRange_ztg, __VA_ARGS__); \
 		}
 	#else
-		#define fillRange_zt_or_ztp fillRange_ztg
+		#define fillRange_zt_or_ztp(...) fillRange_zt_or_ztg(fillRange_zt, fillRange_ztg, __VA_ARGS__)
 	#endif
 
 

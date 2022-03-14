@@ -72,4 +72,8 @@ void setRenderDistanceMax(float f);
 float getRenderDistanceMax();
 #endif
 
+#if ENABLE_TEXTURES && ENABLE_TEXTURES_PROJECTIVE && PRECOMPUTE_PROJECTION_TABLE
+void precomputeProjectionTable(void);
+#endif
+
 #endif /* render_h */

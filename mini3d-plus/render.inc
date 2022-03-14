@@ -145,8 +145,15 @@ SYM(drawFragment)(
         #ifdef RENDER_T
             #ifdef RENDER_P
                 // |1 to prevent floating point division error
-                OPTU32(uint16_t) ui = (u / ((w >> MAX(0, W_SHIFT - UV_SHIFT))|1)) >> MAX(0, UV_SHIFT - W_SHIFT);
-                OPTU32(uint16_t) vi = (v / ((w >> MAX(0, W_SHIFT - UV_SHIFT))|1)) >> MAX(0, UV_SHIFT - W_SHIFT);
+                #if !PRECOMPUTE_PROJECTION
+                OPTU32(uvw_int2_t) divisor = (w >> MAX(0, W_SHIFT - UV_SHIFT))|1;
+                OPTU32(uint16_t) ui = (u / divisor) >> MAX(0, UV_SHIFT - W_SHIFT);
+                OPTU32(uint16_t) vi = (v / divisor) >> MAX(0, UV_SHIFT - W_SHIFT);
+                #else
+                uint32_t projection_mult = getProjectionMult(w);
+                OPTU32(uint16_t) ui = ((u >> (UV_SHIFT - PROJECTION_FIDELITY)) * projection_mult) >> PROJECTION_FIDELITY_B;
+                OPTU32(uint16_t) vi = ((v >> (UV_SHIFT - PROJECTION_FIDELITY)) * projection_mult) >> PROJECTION_FIDELITY_B;
+                #endif
             #else
                 // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
                 OPTU32(uint16_t) ui = (u >> UV_SHIFT);
@@ -293,7 +300,7 @@ SYM(fillRange)(
     #ifdef RENDER_P
     , uvw_int2_t* wp, uvw_int2_t dwdy, uvw_int2_t dwdx
     #endif
-    #ifdef RENDER_G
+    #if defined(RENDER_G)
     , uint8_t light, uint8_t texp
     #endif
 #else
