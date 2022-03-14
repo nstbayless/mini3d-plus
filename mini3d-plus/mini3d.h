@@ -48,7 +48,7 @@
 #define ENABLE_TEXTURES_GREYSCALE 1
 
 // allow textures to have lighting (requires ENABLE_TEXTURES_GREYSCALE)
-#define ENABLE_TEXTURES_LIGHTING 1
+#define ENABLE_TEXTURES_LIGHTING 0
 
 // if this is true, then texture dimensions must always be a power of 2.
 // However, this enables a performance improvement.
@@ -75,7 +75,7 @@
 // If this value is too high, performance may drop.
 // If this value is too low, textures may "jump" slightly as they approach the camera.
 // Comment this definition out entirely to disable this check.
-#define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.94
+#define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.9
 
 // clip faces which are partly behind the camera.
 // This allows rendering faces which are partly behind the camera.

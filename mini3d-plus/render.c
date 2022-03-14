@@ -141,7 +141,7 @@ static inline uint32_t getProjectionMult(uint32_t divisor)
 #if ENABLE_INTERLACE
 // if bit 1 is set, then interface is DISABLED
 // bit 0 controls the line to render (even / odd)
-static int interlace_frame = 0xffff;
+static int interlace_frame = 64;
 void setInterlace(int i)
 {
 	#if INTERLACE_INTERVAL <= 2
