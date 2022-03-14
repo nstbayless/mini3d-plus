@@ -66,7 +66,7 @@
 // requires ENABLE_TEXTURES_PROJECTIVE
 // skips a division step by using a large lookup table
 // you may need to tweak these constants in render.c to achieve good results: PROJECTION_FIDELITY, PROJECTION_FIDELITY_B, UV_SHIFT, W_SHIFT
-#define PRECOMPUTE_PROJECTION 0
+#define PRECOMPUTE_PROJECTION 1
 
 // Only applies if if ENABLE_TEXTURES_PROJECTIVE.
 // Value in the range (0, 1).
