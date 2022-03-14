@@ -133,13 +133,18 @@ static uint8_t backbuff[LCD_ROWS * LCD_ROWSIZE];
 static inline void
 clear_backbuff_interlaced(void)
 {
+	// FIXME: please rewrite this, it's bad
 	int step = getInterlaceEnabled() + 1;
 	int start = 0;
-	if (getInterlaceEnabled()) start = getInterlace();
-	for (size_t i = start; i < LCD_ROWS; i += step)
+	int ilace_enabled = getInterlaceEnabled();
+	int ilace = getInterlace();
+	for (size_t i = 0; i < LCD_ROWS; i ++)
 	{
-		memset(backbuff + (LCD_ROWSIZE * i), 0, LCD_ROWSIZE);
-		pd->graphics->markUpdatedRows(i, i);
+		if (!ilace_enabled || ENABLE_INTERLACE == 2 || (i >> INTERLACE_ROW_LGC) % INTERLACE_INTERVAL == ilace)
+		{
+			memset(backbuff + (LCD_ROWSIZE * i), 0, LCD_ROWSIZE);
+			pd->graphics->markUpdatedRows(i, i);
+		}
 	}
 }
 #endif
@@ -154,7 +159,11 @@ static int scene_draw(lua_State* L)
 	#else
 	if (getInterlaceEnabled())
 	{
-		setInterlace(!getInterlace());
+		#if INTERLACE_INTERVAL <= 2
+			setInterlace(!getInterlace());
+		#else
+			setInterlace((getInterlace()+1)%INTERLACE_INTERVAL);
+		#endif
 		clear_backbuff_interlaced();
 		Scene3D_draw(scene, &backbuff[0], LCD_ROWSIZE);
 	}
@@ -1138,7 +1147,9 @@ static int interlace_get_enable(lua_State* L)
 	pd->lua->pushBool(getInterlaceEnabled());
 	return 1;
 }
+#endif
 
+#if ENABLE_RENDER_DISTANCE_MAX
 static int set_render_distance(lua_State* L)
 {
 	setRenderDistanceMax(pd->lua->getArgFloat(1));

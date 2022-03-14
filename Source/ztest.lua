@@ -45,7 +45,7 @@ function playdate.update()
 	
 	gfx.clear(gfx.kColorBlack)
 	scene:draw()
-	scene:drawZBuff()
+	--scene:drawZBuff()
 end
 
 

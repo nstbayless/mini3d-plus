@@ -101,32 +101,62 @@ render_distance_bounds(Point3D* p1, Point3D* p2, Point3D* p3)
 #if ENABLE_INTERLACE
 // if bit 1 is set, then interface is DISABLED
 // bit 0 controls the line to render (even / odd)
-static int interlace_frame = 3;
+static int interlace_frame = 0xffff;
 void setInterlace(int i)
 {
-	int set = !i;
-	interlace_frame = (interlace_frame & ~1) | set;
+	#if INTERLACE_INTERVAL <= 2
+		int set = !i;
+		interlace_frame = (interlace_frame & ~1) | set;
+	#else
+		interlace_frame = (interlace_frame & ~63) | (i & 63);
+	#endif
 }
 
 int getInterlace(void)
 {
+	#if INTERLACE_INTERVAL <= 2
 	return !(interlace_frame & 1);
+	#else
+	return interlace_frame & 63;
+	#endif
 }
 
 void setInterlaceEnabled(int i)
 {
-	int set = (!i) << 1;
-	interlace_frame = (interlace_frame & ~2) | (set);
+	int set = (!i) << 6;
+	interlace_frame = (interlace_frame & ~64) | (set);
 }
 
 int getInterlaceEnabled(void)
 {
-	return !(interlace_frame & 2);
+	return !(interlace_frame & 64);
 }
+
+static inline int
+interlacePermitsRow(int y)
+{
+	#if INTERLACE_INTERVAL <= 2
+	return ((y >> INTERLACE_ROW_LGC) % 2 != interlace_frame);
+	#else
+	return !getInterlaceEnabled() || ((y >> INTERLACE_ROW_LGC) % INTERLACE_INTERVAL == (interlace_frame & 63));
+	#endif
+}
+#else
+#define interlacePermitsRow(x) 1
+#endif
+
+#ifdef ZBUF32
+	typedef uint32_t zbuf_t;
+	#define ZSCALE_MULT 0xffffffff
+	#define ZSHIFT 0
+#else
+	typedef uint16_t zbuf_t;
+	#define ZSCALE_MULT 0xffff
+	#define ZSHIFT 16
 #endif
 
 #if ENABLE_Z_BUFFER
-static uint16_t zbuf[LCD_COLUMNS*LCD_ROWS];
+static zbuf_t zbuf[LCD_COLUMNS*LCD_ROWS];
 static float zscale;
 
 #define Z_BIAS 0
@@ -134,7 +164,7 @@ static float zscale;
 void resetZBuffer(float zmin)
 {
 	memset(zbuf, 0, sizeof(zbuf));
-	zscale = 0xffff * (zmin + Z_BIAS);
+	zscale = ZSCALE_MULT * (zmin + Z_BIAS);
 }
 #endif
 
@@ -354,13 +384,12 @@ drawLine_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, int thic
 	float z1 = zscale / (p1->z + Z_BIAS) + 256;
 	float z2 = zscale / (p2->z + Z_BIAS) + 256;
 
-	if ( z1 > 65535 ) z1 = 65535;
-	if ( z2 > 65535 ) z2 = 65535;
+	if ( z1 > zscale ) z1 = zscale;
+	if ( z2 > zscale ) z2 = zscale;
+	uint32_t z = z1 * (1<<ZSHIFT);
 
-	int32_t dzdy = slope(z1, p1->y, z2, p2->y + 1, 16);
-	int32_t dzdx = slope(z1, p1->x, z2, p2->x, 16);
-
-	uint32_t z = z1 * (1<<16);
+	int32_t dzdy = slope(z1, p1->y, z2, p2->y + 1, ZSHIFT);
+	int32_t dzdx = slope(z1, p1->x, z2, p2->x, ZSHIFT);
 
 	if ( y < 0 )
 	{
@@ -462,14 +491,17 @@ static void fillRange(uint8_t* bitmap, int rowstride, int y, int endy, int32_t* 
 	
 	while ( y < endy )
 	{
-		uint8_t p = pattern[y%8];
-		uint32_t color = (p<<24) | (p<<16) | (p<<8) | p;
-		
-		drawFragment((uint32_t*)&bitmap[y*rowstride], (x1>>16), (x2>>16)+1, color);
-		
-		x1 += dx1;
-		x2 += dx2;
-		++y;
+		if (interlacePermitsRow(y) || ENABLE_INTERLACE == 2)
+		{
+			uint8_t p = pattern[y%8];
+			uint32_t color = (p<<24) | (p<<16) | (p<<8) | p;
+			
+			drawFragment((uint32_t*)&bitmap[y*rowstride], (x1>>16), (x2>>16)+1, color);
+			
+			x1 += dx1;
+			x2 += dx2;
+			++y;
+		}
 	}
 	
 	*x1p = x1;
@@ -966,7 +998,7 @@ void render_zbuff(uint8_t* out, int rowstride)
 			uint16_t pixi = (y * rowstride) + (x/8);
 			uint8_t mask = 0x80 >> (x % 8);
 			out[pixi] &= ~mask;
-			if ((rand() & 0xffff) < zbuf[y * LCD_COLUMNS + x])
+			if ((rand() & ZSCALE_MULT) < zbuf[y * LCD_COLUMNS + x])
 			{
 				out[pixi] |= mask;
 			}

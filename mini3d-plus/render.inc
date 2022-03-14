@@ -76,7 +76,7 @@ __attribute__ ((hot))
 
 static void
 SYM(drawFragment)(
-	uint32_t* row, uint16_t* zbrow, int x, int endx
+	uint32_t* row, zbuf_t* zbrow, int x, int endx
 #ifdef RENDER_Z
 	, uint32_t z, int32_t dzdx
 #endif
@@ -168,14 +168,14 @@ SYM(drawFragment)(
         #endif
         
         #ifdef RENDER_Z
-        uint16_t zi = z >> 16;
-        if (zi > zbrow[x] && alpha)
-        {
-            mask |= 0x80000000u >> (x%32);
-            zbrow[x] = zi;
-        }
+            zbuf_t zi = z >> ZSHIFT;
+            if (zi > zbrow[x] && alpha)
+            {
+                mask |= 0x80000000u >> (x%32);
+                zbrow[x] = zi;
+            }
         #elif defined(RENDER_T)
-        mask |= (alpha << 24) >> (x%32);
+            mask |= (alpha << 24) >> (x%32);
         #else
             #pragma error "render.inc requires at least one of RENDER_Z and RENDER_T defined."
         #endif
@@ -378,13 +378,7 @@ SYM(fillRange)(
             #define drawFragment_t_OPT_p drawFragment_t
         #endif
         
-        #if ENABLE_INTERLACE
-        const int perform_draw = (y % 2 != interlace_frame);
-        #else
-        const int perform_draw = 1;
-        #endif
-        
-        if (perform_draw)
+        if (interlacePermitsRow(y))
         {
             #if defined(RENDER_T) && defined(RENDER_Z) && defined(RENDER_G)
                 #if ENABLE_TEXTURES_MASK

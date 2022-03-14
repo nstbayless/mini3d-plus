@@ -3,7 +3,6 @@
 -- z buffer: 22 FPS
 -- ordering table: 26 FPS
 
-
 local sin = math.sin
 local cos = math.cos
 
