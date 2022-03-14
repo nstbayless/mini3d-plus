@@ -101,8 +101,15 @@ render_distance_bounds(Point3D* p1, Point3D* p2, Point3D* p3)
 #if ENABLE_TEXTURES && ENABLE_TEXTURES_PROJECTIVE && PRECOMPUTE_PROJECTION
 
 
-#define PROJECTION_FIDELITY 11
-#define PROJECTION_FIDELITY_B 18
+// decreasing this value will cause ripples in projected textures
+// increasing will double the size of the lookup table
+#define PROJECTION_FIDELITY 12
+
+// decreasing this value too much will cause ripples
+// increasing too much may cause overflow errors
+#define PROJECTION_FIDELITY_B 19
+
+
 #define DIVISION_TABLE_C (2 << PROJECTION_FIDELITY)
 static int projectionTablePrecomputed = 0;
 static uint32_t projection_table[DIVISION_TABLE_C];
