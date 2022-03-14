@@ -112,7 +112,7 @@ render_distance_bounds(Point3D* p1, Point3D* p2, Point3D* p3)
 
 #define DIVISION_TABLE_C (2 << PROJECTION_FIDELITY)
 static int projectionTablePrecomputed = 0;
-static uint32_t projection_table[DIVISION_TABLE_C];
+static uint16_t projection_table[DIVISION_TABLE_C];
 
 #if defined(__GNUC__) || defined(__clang__)
 void __attribute__((constructor)) precomputeProjectionTable(void);
