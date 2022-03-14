@@ -132,6 +132,12 @@ SYM(drawFragment)(
     #if defined(RENDER_A) && !defined(RENDER_L)
     uint8_t* maskdata = texdata + (texh * texrowbytes);
     #endif
+    
+    #if defined(RENDER_T) && TEXTURES_ALWAYS_POWER_OF_2
+    // allows quicker modulo later.
+    texw--;
+    texh--;
+    #endif
 
 	while ( (unsigned)x < (unsigned)endx )
 	{
@@ -140,13 +146,18 @@ SYM(drawFragment)(
             #ifdef RENDER_P
                 // |1 to prevent floating point division error
                 OPTU32(uint16_t) ui = (u / ((w >> MAX(0, W_SHIFT - UV_SHIFT))|1)) >> MAX(0, UV_SHIFT - W_SHIFT);
-                ui %= texw; // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
                 OPTU32(uint16_t) vi = (v / ((w >> MAX(0, W_SHIFT - UV_SHIFT))|1)) >> MAX(0, UV_SHIFT - W_SHIFT);
-                vi %= texh; // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
             #else
                 // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
-                OPTU32(uint16_t) ui = (u >> UV_SHIFT) % texw;
-                OPTU32(uint16_t) vi = (v >> UV_SHIFT) % texh;
+                OPTU32(uint16_t) ui = (u >> UV_SHIFT);
+                OPTU32(uint16_t) vi = (v >> UV_SHIFT);
+            #endif
+            #if TEXTURES_ALWAYS_POWER_OF_2
+                ui &= texw;
+                vi &= texh;
+            #else
+                ui %= texw; // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
+                vi %= texh; // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
             #endif
             #ifdef RENDER_L
             OPTU32(uint16_t) ti = (vi * texrowbytes) + ui;

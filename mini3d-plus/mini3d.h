@@ -50,6 +50,11 @@
 // allow textures to have lighting (requires ENABLE_TEXTURES_GREYSCALE)
 #define ENABLE_TEXTURES_LIGHTING 1
 
+// if this is true, then texture dimensions must always be a power of 2.
+// However, this enables a performance improvement.
+// Undefined behaviour occurs if the texture has dimensions which are not powers of 2.
+#define TEXTURES_ALWAYS_POWER_OF_2 1
+
 // ignored if textures are disabled
 // if 1, textures are mapped with homogenous coordinates.
 // if 0, textures will be significantly warped as they approach
