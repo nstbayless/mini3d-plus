@@ -143,7 +143,6 @@ clear_backbuff_interlaced(void)
 		if (!ilace_enabled || ENABLE_INTERLACE == 2 || (i >> INTERLACE_ROW_LGC) % INTERLACE_INTERVAL == ilace)
 		{
 			memset(backbuff + (LCD_ROWSIZE * i), 0, LCD_ROWSIZE);
-			pd->graphics->markUpdatedRows(i, i);
 		}
 	}
 }
@@ -164,9 +163,9 @@ static int scene_draw(lua_State* L)
 	if (getInterlaceEnabled())
 	{
 		#if INTERLACE_INTERVAL <= 2
-			setInterlace(!getInterlace());
+			//setInterlace(!getInterlace());
 		#else
-			setInterlace((getInterlace()+1)%INTERLACE_INTERVAL);
+			//setInterlace((getInterlace()+1)%INTERLACE_INTERVAL);
 		#endif
 		clear_backbuff_interlaced();
 		Scene3D_draw(scene, &backbuff[0], LCD_ROWSIZE);
@@ -177,6 +176,7 @@ static int scene_draw(lua_State* L)
 		Scene3D_draw(scene, &backbuff[0], LCD_ROWSIZE);
 	}
 	memcpy(pd->graphics->getFrame(), backbuff, LCD_ROWS * LCD_ROWSIZE);
+	pd->graphics->markUpdatedRows(0, LCD_ROWS-1);
 	#endif
 	
 	return 0;
