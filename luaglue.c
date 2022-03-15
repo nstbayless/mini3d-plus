@@ -163,9 +163,9 @@ static int scene_draw(lua_State* L)
 	if (getInterlaceEnabled())
 	{
 		#if INTERLACE_INTERVAL <= 2
-			//setInterlace(!getInterlace());
+			setInterlace(!getInterlace());
 		#else
-			//setInterlace((getInterlace()+1)%INTERLACE_INTERVAL);
+			setInterlace((getInterlace()+1)%INTERLACE_INTERVAL);
 		#endif
 		clear_backbuff_interlaced();
 		Scene3D_draw(scene, &backbuff[0], LCD_ROWSIZE);
