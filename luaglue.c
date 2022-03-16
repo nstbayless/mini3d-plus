@@ -127,6 +127,7 @@ static int scene_getRoot(lua_State* L)
 	pd->lua->pushObject(Scene3D_getRootNode(scene), "lib3d.scenenode", 0);
 	return 1;
 }
+
 #if ENABLE_INTERLACE
 static uint8_t backbuff[LCD_ROWS * LCD_ROWSIZE];
 

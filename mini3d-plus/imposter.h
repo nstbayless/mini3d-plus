@@ -4,6 +4,7 @@
 #include "mini3d.h"
 #include "3dmath.h"
 #include "texture.h"
+#include "scanline.h"
 
 typedef LCDBitmap LCDBitmap;
 
@@ -13,6 +14,10 @@ typedef struct
     Point3D center;
     float x1, x2, y1, y2;
     float z1, z2, z3, z4;
+    
+    #if ENABLE_POLYGON_SCANLINING
+	ScanlineFill scanline;
+    #endif
     
     #if ENABLE_TEXTURES
     Texture* bitmap; // FIXME: rename to 'texture'

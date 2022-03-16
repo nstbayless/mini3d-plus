@@ -21,6 +21,10 @@ void Shape3D_init(Shape3D* shape)
 	shape->texture = NULL;
 	shape->texmap = NULL;
 #endif
+	#if ENABLE_POLYGON_SCANLINING
+	shape->scanline.select = kScanlineOdd;
+	shape->scanline.fill = 0xAAAAAAAA;
+	#endif
 #if ENABLE_CUSTOM_PATTERNS
 	shape->pattern = &patterns;
 #endif

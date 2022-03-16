@@ -1127,6 +1127,9 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 					#if ENABLE_CUSTOM_PATTERNS
 					, shape->prototype->pattern
 					#endif
+					#if ENABLE_POLYGON_SCANLINING
+					, &shape->prototype->scanline
+					#endif
 					#if ENABLE_TEXTURES_GREYSCALE
 					, v, ft->lighting
 					#endif
@@ -1152,6 +1155,9 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 					shape->prototype->texture, ft->t1, ft->t2, ft->t3
 					#if ENABLE_CUSTOM_PATTERNS
 					, shape->prototype->pattern
+					#endif
+					#if ENABLE_POLYGON_SCANLINING
+					, &shape->prototype->scanline
 					#endif
 					#if ENABLE_TEXTURES_GREYSCALE
 					, v, ft->lighting
@@ -1346,6 +1352,9 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 			fillQuad_zt(bitmap, rowstride, &tl, &tr, &br, &bl, imposter->prototype->bitmap, t1, t2, t3, t4
 			#if ENABLE_CUSTOM_PATTERNS
 			, patterns
+			#endif
+			#if ENABLE_POLYGON_SCANLINING
+			, &imposter->prototype->scanline
 			#endif
 			#if ENABLE_TEXTURES_GREYSCALE
 			// TODO: lighting on imposters

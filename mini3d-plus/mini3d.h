@@ -21,19 +21,6 @@
 
 // ------
 
-// this OPTIONALLY enables interlace mode.
-// if true, only update odd rows on some frames and even rows on others.
-// you must also call lib3d.interlace.enable(1) to set this from lua. (!)
-// set this to 2 to only interlace textures
-#define ENABLE_INTERLACE 1
-
-// interlace row width is 2 to the power of this number
-#define INTERLACE_ROW_LGC 0
-
-// must be at least 2. draw only 1 in every INTERLACE_INTERVAL rows.
-// Pixel-write portion of rendering time should decrease as the reciprocal of this.
-#define INTERLACE_INTERVAL 2
-
 // allow shapes to have custom dither patterns (per-shape)
 #define ENABLE_CUSTOM_PATTERNS 1
 
@@ -77,6 +64,13 @@
 // Comment this definition out entirely to disable this check.
 #define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.9
 
+// Allows shapes to optionally define a 'scanlining' effect which
+// causes even (or odd) rows to look different.
+// This may have a performance benefit.
+// Currently, this is only implemented for textured surfaces.
+// (Untextured surfaces can achieve a similar effect with custom dither patterns)
+#define ENABLE_POLYGON_SCANLINING 0
+
 // clip faces which are partly behind the camera.
 // This allows rendering faces which are partly behind the camera.
 #define FACE_CLIPPING 1
@@ -88,6 +82,19 @@
 // by lua: mini3d.renderer.setRenderDistance()
 // set this to 2 to enable only for textured surfaces
 #define ENABLE_RENDER_DISTANCE_MAX 0
+
+// this OPTIONALLY enables interlace mode.
+// if true, only update odd rows on some frames and even rows on others.
+// you must also call lib3d.interlace.enable(1) to set this from lua. (!)
+// set this to 2 to only interlace textures
+#define ENABLE_INTERLACE 1
+
+// interlace row width is 2 to the power of this number
+#define INTERLACE_ROW_LGC 0
+
+// must be at least 2. draw only 1 in every INTERLACE_INTERVAL rows.
+// Pixel-write portion of rendering time should decrease as the reciprocal of this.
+#define INTERLACE_INTERVAL 2
 
 #include <stddef.h>
 #include <stdint.h>

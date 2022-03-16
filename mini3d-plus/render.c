@@ -185,6 +185,14 @@ interlacePermitsRow(int y)
 #define interlacePermitsRow(x) 1
 #endif
 
+#if ENABLE_POLYGON_SCANLINING
+static inline int
+scanlinePermitsRow(int y, ScanlineFill* scanline)
+{
+	return (y % 2) != (scanline->select);
+}
+#endif
+
 #ifdef ZBUF32
 	typedef uint32_t zbuf_t;
 	#define ZSCALE_MULT 0xffffffff
@@ -297,6 +305,11 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 #define RP 16
 #define RL 32
 
+#if ENABLE_Z_BUFFER
+	#define RENDER RZ
+	#include "render.inc"
+#endif
+
 #if ENABLE_TEXTURES_PROJECTIVE
 	#if ENABLE_TEXTURES && ENABLE_TEXTURES_MASK
 		#define RENDER RT | RA | RP
@@ -348,9 +361,6 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 #endif
 
 #if ENABLE_Z_BUFFER
-	#define RENDER RZ
-	#include "render.inc"
-	
 	#if ENABLE_TEXTURES && ENABLE_TEXTURES_GREYSCALE
 		#if ENABLE_TEXTURES_MASK
 			#define RENDER RZ | RT | RA | RG | RL
@@ -760,6 +770,9 @@ LCDRowRange fillTriangle_zt(
 	#if ENABLE_CUSTOM_PATTERNS
 	, PatternTable* pattern
 	#endif
+	#if ENABLE_POLYGON_SCANLINING
+	, ScanlineFill* scanline
+	#endif
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
 	#endif
@@ -934,6 +947,9 @@ LCDRowRange fillTriangle_zt(
 		#if ENABLE_CUSTOM_PATTERNS
 		, pattern
 		#endif
+		#if ENABLE_POLYGON_SCANLINING
+		, scanline
+		#endif
 	);
 	
 	int dx = slope(p2->x, p2->y, p3->x, p3->y, 16);
@@ -959,6 +975,9 @@ LCDRowRange fillTriangle_zt(
 			#if ENABLE_CUSTOM_PATTERNS
 			, pattern
 			#endif
+			#if ENABLE_POLYGON_SCANLINING
+			, scanline
+			#endif
 		);
 	}
 	else
@@ -968,6 +987,9 @@ LCDRowRange fillTriangle_zt(
 			bitmap, rowstride, p2->y, endy, &x1, dx1, &x2, dx, &z, dzdy, dzdx, &u, dudy, dudx, &v, dvdy, dvdx, texture
 			#if ENABLE_CUSTOM_PATTERNS
 			, pattern
+			#endif
+			#if ENABLE_POLYGON_SCANLINING
+			, scanline
 			#endif
 		);
 	}
@@ -999,6 +1021,9 @@ LCDRowRange fillQuad_zt(
 	#if ENABLE_CUSTOM_PATTERNS
 	, PatternTable* pattern
 	#endif
+	#if ENABLE_POLYGON_SCANLINING
+	, ScanlineFill* scanline
+	#endif
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
 	#endif
@@ -1010,6 +1035,9 @@ LCDRowRange fillQuad_zt(
 		#if ENABLE_CUSTOM_PATTERNS
 		, pattern
 		#endif
+		#if ENABLE_POLYGON_SCANLINING
+		, scanline
+		#endif
 		#if ENABLE_TEXTURES_GREYSCALE
 		, lighting, lighting_weight
 		#endif
@@ -1018,6 +1046,9 @@ LCDRowRange fillQuad_zt(
 		bitmap, rowstride, p1, p3, p4, texture, t1, t3, t4
 		#if ENABLE_CUSTOM_PATTERNS
 		, pattern
+		#endif
+		#if ENABLE_POLYGON_SCANLINING
+		, scanline
 		#endif
 		#if ENABLE_TEXTURES_GREYSCALE
 		, lighting, lighting_weight

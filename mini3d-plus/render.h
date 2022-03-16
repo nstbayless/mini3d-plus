@@ -12,6 +12,7 @@
 #include "3dmath.h"
 #include "mini3d.h"
 #include "texture.h"
+#include "scanline.h"
 
 typedef struct
 {
@@ -40,6 +41,9 @@ LCDRowRange fillTriangle_zt(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D
 	#if ENABLE_CUSTOM_PATTERNS
 	, PatternTable* pattern
 	#endif
+	#if ENABLE_POLYGON_SCANLINING
+	, ScanlineFill* scanline
+	#endif
 	#if ENABLE_TEXTURES_GREYSCALE
 	// if lighting_weight 0, then ignore light and only use texture
 	// if lighting weight 1, then ignore texture and only use light
@@ -52,6 +56,9 @@ LCDRowRange fillQuad_zt(
 	Texture* texture, Point2D t1, Point2D t2, Point2D t3, Point2D t4
 	#if ENABLE_CUSTOM_PATTERNS
 	, PatternTable* pattern
+	#endif
+	#if ENABLE_POLYGON_SCANLINING
+	, ScanlineFill* scanline
 	#endif
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight

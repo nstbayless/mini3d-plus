@@ -24,6 +24,11 @@ void Imposter3D_init(Imposter3D* imposter)
 	imposter->z2 = 0;
 	imposter->z3 = 0;
 	imposter->z4 = 0;
+	
+	#if ENABLE_POLYGON_SCANLINING
+	imposter->scanline.select = kScanlineAll;
+	#endif
+	
 	#if ENABLE_TEXTURES
 	imposter->bitmap = NULL;
 	

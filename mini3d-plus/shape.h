@@ -12,6 +12,7 @@
 #include "mini3d.h"
 #include "3dmath.h"
 #include "texture.h"
+#include "scanline.h"
 
 typedef struct
 {
@@ -57,6 +58,9 @@ typedef struct
 #endif
 #if ENABLE_CUSTOM_PATTERNS
 	PatternTable* pattern;
+#endif
+#if ENABLE_POLYGON_SCANLINING
+	ScanlineFill scanline;
 #endif
 	Point3D center; // used for z-sorting entire shapes at a time, and for collision detection
 	float colorBias;

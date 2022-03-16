@@ -297,6 +297,9 @@ SYM(fillRange)(
     #if ENABLE_CUSTOM_PATTERNS
     , PatternTable* pattern
     #endif
+    #if defined(RENDER_T) && ENABLE_POLYGON_SCANLINING
+    , ScanlineFill* scanline
+    #endif
     #ifdef RENDER_P
     , uvw_int2_t* wp, uvw_int2_t dwdy, uvw_int2_t dwdx
     #endif
@@ -396,7 +399,13 @@ SYM(fillRange)(
             #define drawFragment_t_OPT_p drawFragment_t
         #endif
         
-        if (interlacePermitsRow(y))
+        #if defined(RENDER_T) && ENABLE_POLYGON_SCANLINING
+        const int scanline_permits = scanlinePermitsRow(y, scanline);
+        #else
+        const int scanline_permits = 1;
+        #endif
+        
+        if (interlacePermitsRow(y) && scanline_permits)
         {
             #if defined(RENDER_T) && defined(RENDER_Z) && defined(RENDER_G)
                 #if ENABLE_TEXTURES_MASK
@@ -488,6 +497,21 @@ SYM(fillRange)(
                 );
             #endif
         }
+        #if defined(RENDER_T) && ENABLE_POLYGON_SCANLINING
+        else if (interlacePermitsRow(y) && !scanline_permits)
+        {
+            #if defined (RENDER_Z)
+            drawFragment_z(
+                (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], (x1>>16), (x2>>16)+1,
+                z, dzdx, scanline->fill
+            );
+            #else
+            drawFragment(
+                (uint32_t*)&bitmap[y*rowstride], (x1>>16), (x2>>16)+1, scanline->fill
+            );
+            #endif
+        }
+        #endif
 		
 		x1 += dx1;
 		x2 += dx2;
