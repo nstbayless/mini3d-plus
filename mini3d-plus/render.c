@@ -776,6 +776,9 @@ LCDRowRange fillTriangle_zt(
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
 	#endif
+	#if ENABLE_TEXTURES_PROJECTIVE
+	, int projective
+	#endif
 )
 {
 	sortTri_t(&p1, &p2, &p3, &t1, &t2, &t3);
@@ -817,12 +820,12 @@ LCDRowRange fillTriangle_zt(
 	w1 = 1 / p1->z;
 	w2 = 1 / p2->z;
 	w3 = 1 / p3->z;
-	const int projective_texture_mapping = 1;
+	int projective_texture_mapping = projective;
 	#else
 	float zmin = MIN(p1->z, MIN(p2->z, p3->z));
 	float zmax = MAX(p1->z, MAX(p2->z, p3->z));
 	int projective_texture_mapping;
-	if (zmin / zmax < TEXTURE_PROJECTIVE_RATIO_THRESHOLD)
+	if (projective && zmin / zmax < TEXTURE_PROJECTIVE_RATIO_THRESHOLD)
 	{
 		projective_texture_mapping = 1;
 		w1 = 1 / p1->z;
@@ -837,7 +840,6 @@ LCDRowRange fillTriangle_zt(
 		w3 = 1;
 	}
 	#endif
-	
 	#else
 	const int projective_texture_mapping = 0;
 	const float w1 = 1;
@@ -1027,6 +1029,9 @@ LCDRowRange fillQuad_zt(
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
 	#endif
+	#if ENABLE_TEXTURES_PROJECTIVE
+	, int projective
+	#endif
 )
 {
 	// XXX - implement with 3 fillrange_z() calls
@@ -1041,6 +1046,9 @@ LCDRowRange fillQuad_zt(
 		#if ENABLE_TEXTURES_GREYSCALE
 		, lighting, lighting_weight
 		#endif
+		#if ENABLE_TEXTURES_PROJECTIVE
+		, projective
+		#endif
 	);
 	return fillTriangle_zt(
 		bitmap, rowstride, p1, p3, p4, texture, t1, t3, t4
@@ -1052,6 +1060,9 @@ LCDRowRange fillQuad_zt(
 		#endif
 		#if ENABLE_TEXTURES_GREYSCALE
 		, lighting, lighting_weight
+		#endif
+		#if ENABLE_TEXTURES_PROJECTIVE
+		, projective
 		#endif
 	);
 }

@@ -43,3 +43,8 @@ If you use mini3d+, please credit the following.
 - [miniz](https://github.com/richgel999/miniz)
 - NaOH
 - gingerbeardman (testing)
+
+## Credits (demo)
+
+- [Keith at Fertile Soil Productions](https://opengameart.org/content/racing-kart) - for prov the kart model in the demo
+- [chained_tan](https://twitter.com/chained_tan) - for providing the Touhou character in the kart demo

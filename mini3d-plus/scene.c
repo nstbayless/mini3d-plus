@@ -1133,6 +1133,9 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 					#if ENABLE_TEXTURES_GREYSCALE
 					, v, ft->lighting
 					#endif
+					#if ENABLE_TEXTURES_PROJECTIVE
+					, 1
+					#endif
 				);
 			}
 			else
@@ -1161,6 +1164,9 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 					#endif
 					#if ENABLE_TEXTURES_GREYSCALE
 					, v, ft->lighting
+					#endif
+					#if ENABLE_TEXTURES_PROJECTIVE
+					, 1
 					#endif
 				);
 			}
@@ -1359,6 +1365,9 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 			#if ENABLE_TEXTURES_GREYSCALE
 			// TODO: lighting on imposters
 			, 0, 0
+			#endif
+			#if ENABLE_TEXTURES_PROJECTIVE
+			, 0
 			#endif
 			);
 		else

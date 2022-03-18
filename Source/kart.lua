@@ -110,7 +110,7 @@ end
 
 kartshape:setPosition(lib3d.point.new(0, 0, 0))
 kartshape:setRectangle(-KSIZE /2, -KSIZE * (1-sink), KSIZE /2, KSIZE * sink)
-kartshape:setZOffsets(0, 0, -2, -2) -- helps imposter appear above the floor
+kartshape:setZOffsets(0, 0, -4, -4) -- helps imposter appear above the floor
 
 if lib3d.texture then
     kartshape:setTexture(lib3d.texture.new("assets/kart/img-0.png.u", true))
@@ -217,7 +217,7 @@ kart = {
             mat,
             self.pos.x,
             self.pos.y,
-            self.pos.z
+            self.pos.z + 0.75
         )
         return mat
     end,

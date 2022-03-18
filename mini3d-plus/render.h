@@ -50,6 +50,9 @@ LCDRowRange fillTriangle_zt(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D
 	// (in which case, please call the non-texture version of this function instead!)
 	, float lighting, float lighting_weight
 	#endif
+	#if ENABLE_TEXTURES_PROJECTIVE
+	, int projective
+	#endif
 );
 LCDRowRange fillQuad_zt(
 	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4,
@@ -62,6 +65,9 @@ LCDRowRange fillQuad_zt(
 	#endif
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
+	#endif
+	#if ENABLE_TEXTURES_PROJECTIVE
+	, int projective
 	#endif
 );
 
