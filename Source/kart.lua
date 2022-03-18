@@ -94,13 +94,13 @@ j = nil -- clean up
 n2:addShape(terrain)
 n2:addShape(banner)
 
-local KSIZE = 4.5
+local KSIZE = 4
 local sink = 0.4
 kartshape = lib3d.imposter.new()
 
 -- load kart textures
 if lib3d.texture then
-    KART_ANGLES = 40
+    KART_ANGLES = 96
     kart_texture = {}
     for i = 0,KART_ANGLES-1 do
         local f = "assets/kart/img-"..tostring(i)..".png.u"
@@ -125,7 +125,7 @@ local gfx = playdate.graphics
 kart = {
     -- position and size
     pos = lib3d.point.new(),
-    r = 2,
+    r = KSIZE * 0.35,
     
     -- facing
     f = lib3d.point.new(-1, -1, 0),
