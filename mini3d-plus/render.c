@@ -194,24 +194,51 @@ scanlinePermitsRow(int y, ScanlineFill* scanline)
 #endif
 
 #ifdef ZBUF32
+	// this doesn't seem to work at all.
+	// not sure why.
 	typedef uint32_t zbuf_t;
 	#define ZSCALE_MULT 0xffffffff
 	#define ZSHIFT 0
-#else
+#elif defined(ZBUF16)
 	typedef uint16_t zbuf_t;
 	#define ZSCALE_MULT 0xffff
+	#define ZSHIFT 16
+#else
+	typedef uint8_t zbuf_t;
+	#define ZSCALE_MULT 0xff
 	#define ZSHIFT 16
 #endif
 
 #if ENABLE_Z_BUFFER
-static zbuf_t zbuf[LCD_COLUMNS*LCD_ROWS];
+
+#if Z_BUFFER_FRAME_PARITY
+	static int zbuff_parity = 0;
+	#define ZBUFF_PARITY_MULT 2
+#else
+	#define ZBUFF_PARITY_MULT 1
+#endif
+
+static zbuf_t zbuf[LCD_COLUMNS*LCD_ROWS*ZBUFF_PARITY_MULT];
 static float zscale;
 
 #define Z_BIAS 0
 
+void prefetch_zbuf()
+{
+	#if defined(__GNUC__) || defined(__clang__)
+	__builtin_prefetch(&zbuf[0]);
+	__builtin_prefetch(&zbuf[0x100]);
+	__builtin_prefetch(&zbuf[0x200]);
+	#endif
+}
+
 void resetZBuffer(float zmin)
 {
+	#if Z_BUFFER_FRAME_PARITY == 0
 	memset(zbuf, 0, sizeof(zbuf));
+	#else
+	zbuff_parity = !zbuff_parity;
+	#endif
 	zscale = ZSCALE_MULT * (zmin + Z_BIAS);
 }
 #endif
@@ -457,11 +484,11 @@ drawLine_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, int thic
 		if ( dx < 0 )
 		{
 			z += dzdy;
-			drawFragment_z((uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], x1>>16, (x>>16) + thick, z, dzdx, color);
+			drawFragment_z((uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS*ZBUFF_PARITY_MULT], x1>>16, (x>>16) + thick, z, dzdx, color);
 		}
 		else
 		{
-			drawFragment_z((uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS], x>>16, (x1>>16) + thick, z, dzdx, color);
+			drawFragment_z((uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS*ZBUFF_PARITY_MULT], x>>16, (x1>>16) + thick, z, dzdx, color);
 			z += dzdy;
 		}
 
@@ -763,6 +790,28 @@ LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point
 }
 #endif
 
+#if ENABLE_TEXTURES_PROJECTIVE && defined(TEXTURE_PROJECTIVE_RATIO_THRESHOLD)
+static inline int
+projective_ratio_test(Point3D* p1, Point3D* p2, Point3D* p3)
+{
+	float zmin = MIN(p1->z, MIN(p2->z, p3->z));
+	float zmax = MAX(p1->z, MAX(p2->z, p3->z));
+	
+	return zmax > zmin * TEXTURE_PROJECTIVE_RATIO_THRESHOLD;
+	
+	// XXX
+	// UNUSED
+	// twice the area of the triangle
+	// https://keisan.casio.com/exec/system/1223520411
+	// OPTIMIZE: try using integers instead
+	float area2 = (p1->x * p2->y + p2->x * p3->y + p3->x * p1->y
+	              -p1->y * p2->x - p2->y * p3->x - p3->y * p1->x);
+	area2 = fabs(area2);
+	
+	return (area2 * zmax > zmin * TEXTURE_PROJECTIVE_RATIO_THRESHOLD * 64 * 64);
+}
+#endif
+
 #if ENABLE_Z_BUFFER && ENABLE_TEXTURES
 LCDRowRange fillTriangle_zt(
 	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3,
@@ -822,10 +871,8 @@ LCDRowRange fillTriangle_zt(
 	w3 = 1 / p3->z;
 	int projective_texture_mapping = projective;
 	#else
-	float zmin = MIN(p1->z, MIN(p2->z, p3->z));
-	float zmax = MAX(p1->z, MAX(p2->z, p3->z));
 	int projective_texture_mapping;
-	if (projective && zmin / zmax < TEXTURE_PROJECTIVE_RATIO_THRESHOLD)
+	if (projective && projective_ratio_test(p1, p2, p3))
 	{
 		projective_texture_mapping = 1;
 		w1 = 1 / p1->z;
@@ -1080,7 +1127,7 @@ void render_zbuff(uint8_t* out, int rowstride)
 			uint16_t pixi = (y * rowstride) + (x/8);
 			uint8_t mask = 0x80 >> (x % 8);
 			out[pixi] &= ~mask;
-			if ((rand() & ZSCALE_MULT) < zbuf[y * LCD_COLUMNS + x])
+			if ((rand() & ZSCALE_MULT) < zbuf[(y * LCD_COLUMNS + x) * ZBUFF_PARITY_MULT])
 			{
 				out[pixi] |= mask;
 			}

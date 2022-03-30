@@ -1,3 +1,6 @@
 [submodule "lib/eigen"]
 	path = lib/eigen
 	url = https://github.com/PX4/eigen
+[submodule "librif"]
+	path = librif
+	url = https://github.com/risolvipro/librif

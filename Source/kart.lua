@@ -264,12 +264,12 @@ function playdate.update()
     
     kart:setShoulderCamera(scene)
 	
+    scene:prefetchZBuff();
 	if not lib3d.renderer.getInterlaceEnabled then -- [sic]
         -- if interlace is enabled, the scene clears to black automatically,
         -- so we don't need this.
         gfx.clear(gfx.kColorBlack)
     end
 	scene:draw()
-    --scene:drawZBuff()
     playdate.drawFPS(0,0)
 end

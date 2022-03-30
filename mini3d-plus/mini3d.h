@@ -56,13 +56,10 @@
 #define PRECOMPUTE_PROJECTION 1
 
 // Only applies if if ENABLE_TEXTURES_PROJECTIVE.
-// Value in the range (0, 1).
-// Only faces whose total z ratio (from closest to furthest point)
-// is less than this will have projective textures.
 // If this value is too high, performance may drop.
 // If this value is too low, textures may "jump" slightly as they approach the camera.
 // Comment this definition out entirely to disable this check.
-#define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.9
+#define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.9f
 
 // Allows shapes to optionally define a 'scanlining' effect which
 // causes even (or odd) rows to look different.
@@ -75,7 +72,9 @@
 // This allows rendering faces which are partly behind the camera.
 #define FACE_CLIPPING 1
 
-// clip faces that are closer than this
+// Clip faces that are closer than this.
+// Also, when using the z buffer, increasing this could also increase 
+// the maximum view distance.
 #define CLIP_EPSILON 0.5f
 
 // do not render anything beyond a distance specified
@@ -87,7 +86,7 @@
 // if true, only update odd rows on some frames and even rows on others.
 // you must also call lib3d.interlace.enable(1) to set this from lua. (!)
 // set this to 2 to only interlace textures
-#define ENABLE_INTERLACE 1
+#define ENABLE_INTERLACE 0
 
 // interlace row width is 2 to the power of this number
 #define INTERLACE_ROW_LGC 0
@@ -95,6 +94,12 @@
 // must be at least 2. draw only 1 in every INTERLACE_INTERVAL rows.
 // Pixel-write portion of rendering time should decrease as the reciprocal of this.
 #define INTERLACE_INTERVAL 2
+
+// experimental alternative to clearing the z buffer to 0 each frame.
+#define Z_BUFFER_FRAME_PARITY 0
+
+// comment this out to use an 8-bit z-buffer, which is faster but less accurate.
+#define ZBUF16
 
 #include <stddef.h>
 #include <stdint.h>

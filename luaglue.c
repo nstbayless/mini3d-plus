@@ -149,6 +149,14 @@ clear_backbuff_interlaced(void)
 }
 #endif
 
+static int _prefetch_zbuf(lua_State* L)
+{
+	#if ENABLE_Z_BUFFER
+	prefetch_zbuf();
+	#endif
+	return 0;
+}
+
 static int scene_draw(lua_State* L)
 {
 	Scene3D* scene = getScene(1);
@@ -294,6 +302,7 @@ static const lua_reg lib3DScene[] =
 	{ "setCameraScale",		scene_setCameraScale },
 	{ "setCameraTarget",	scene_setCameraTarget },
 	{ "setCameraUp",		scene_setCameraUp },
+	{ "prefetchZBuff", _prefetch_zbuf},
 	{ NULL,				NULL }
 };
 
