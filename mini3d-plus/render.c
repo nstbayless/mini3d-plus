@@ -9,7 +9,7 @@
 #if defined(__GNUC__) || defined(__clang__)
 #pragma GCC optimize ("O3")
 #pragma GCC optimize ("-fsingle-precision-constant")
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+//#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 
 // OPTIMIZE: consider using -ffast-math
 #endif
@@ -223,7 +223,7 @@ static float zscale;
 
 #define Z_BIAS 0
 
-void prefetch_zbuf()
+void prefetch_zbuf(void)
 {
 	#if defined(__GNUC__) || defined(__clang__)
 	__builtin_prefetch(&zbuf[0]);

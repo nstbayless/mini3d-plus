@@ -36,7 +36,7 @@ ASRC = setup.s
 UINCDIR = mini3d-plus
 
 # List all user C define here, like -D_DEBUG=1
-UDEFS =
+UDEFS = -DPLAYDATE=1
 
 # Define ASM defines here
 UADEFS =
@@ -48,5 +48,14 @@ ULIBDIR =
 ULIBS =
 
 #CLANGFLAGS = -fsanitize=address
+
+ifneq ("$(wildcard librif/src/)","")
+SRC += \
+	./librif/src/librif.c \
+	./librif/src/playdate/librif_luaglue.c
+CLANGFLAGS += -I./librif/src/ -DPLAYDATE=1
+UDEFS += -DM3D_LIBRIF
+endif
+
 
 include $(SDK)/C_API/buildsupport/common.mk
