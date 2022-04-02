@@ -69,7 +69,6 @@ Create the following file in your project root, and call it `Makefile`:
 
 ```
 PRODUCT = MyProject.pdx
-
 include /path/to/mini3d-plus/Makefile
 ```
 (**Important**: you must edit this include path according to the location of mini3d-plus on your system!)
