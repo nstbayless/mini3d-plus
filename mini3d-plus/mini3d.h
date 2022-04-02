@@ -25,6 +25,23 @@
 
 // ------
 
+// viewport bounds
+#ifndef VIEWPORT_LEFT
+    #define VIEWPORT_LEFT 0
+#endif
+
+#ifndef VIEWPORT_TOP
+    #define VIEWPORT_TOP 0
+#endif
+
+#ifndef VIEWPORT_RIGHT
+    #define VIEWPORT_RIGHT 400
+#endif
+
+#ifndef VIEWPORT_BOTTOM
+    #define VIEWPORT_BOTTOM 240
+#endif
+
 // allow shapes to have custom dither patterns (per-shape)
 #ifndef ENABLE_CUSTOM_PATTERNS
     #define ENABLE_CUSTOM_PATTERNS 1

@@ -101,11 +101,11 @@ SYM(drawFragment)(
 #endif
 )
 {
-	if ( endx < 0 || x >= LCD_COLUMNS )
+	if ( endx < VIEWPORT_LEFT || x >= VIEWPORT_RIGHT )
 		return;
         
-    if ( endx > LCD_COLUMNS )
-		endx = LCD_COLUMNS;
+    if ( endx > VIEWPORT_RIGHT )
+		endx = VIEWPORT_RIGHT;
 	
 	if ( x < 0 )
 	{
@@ -425,7 +425,7 @@ SYM(fillRange)(
                 #else
                 (!fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)(
                 #endif
-                    (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS * ZBUFF_PARITY_MULT], (x1>>16), (x2>>16)+1,
+                    (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
                     z, dzdx,
                     u, dudx, v, dvdx,
                     bmdata, rowbytes, width, height
@@ -449,7 +449,7 @@ SYM(fillRange)(
                 #else
                 (!fmt ? drawFragment_tg_OPT_p : drawFragment_tgl_OPT_p)(
                 #endif
-                    (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS * ZBUFF_PARITY_MULT], (x1>>16), (x2>>16)+1,
+                    (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
                     u, dudx, v, dvdx,
                     bmdata, rowbytes, width, height
                     #if ENABLE_CUSTOM_PATTERNS
@@ -469,7 +469,7 @@ SYM(fillRange)(
                 #else
                 drawFragment_zt_OPT_p(
                 #endif
-                    (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS * ZBUFF_PARITY_MULT], (x1>>16), (x2>>16)+1,
+                    (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
                     z, dzdx,
                     u, dudx, v, dvdx,
                     bmdata, rowbytes, width, height
@@ -486,7 +486,7 @@ SYM(fillRange)(
                 #else
                 drawFragment_t_OPT_p(
                 #endif
-                    (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS * ZBUFF_PARITY_MULT], (x1>>16), (x2>>16)+1,
+                    (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
                     u, dudx, v, dvdx,
                     bmdata, rowbytes, width, height
                     #if ENABLE_CUSTOM_PATTERNS
@@ -501,7 +501,7 @@ SYM(fillRange)(
                 uint8_t p = pattern[y%8];
                 uint32_t color = (p<<24) | (p<<16) | (p<<8) | p;
                 drawFragment_z(
-                    (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS * ZBUFF_PARITY_MULT], (x1>>16), (x2>>16)+1,
+                    (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
                     z, dzdx, color
                 );
             #endif
@@ -511,7 +511,7 @@ SYM(fillRange)(
         {
             #if defined (RENDER_Z)
             drawFragment_z(
-                (uint32_t*)&bitmap[y*rowstride], &zbuf[y*LCD_COLUMNS * ZBUFF_PARITY_MULT], (x1>>16), (x2>>16)+1,
+                (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
                 z, dzdx, scanline->fill
             );
             #else
