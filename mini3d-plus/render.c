@@ -215,9 +215,6 @@ scanlinePermitsRow(int y, ScanlineFill* scanline)
 	#define ZBUFF_PARITY_MULT 1
 #endif
 
-#define VIEWPORT_WIDTH (VIEWPORT_RIGHT - VIEWPORT_LEFT)
-#define VIEWPORT_HEIGHT (VIEWPORT_BOTTOM - VIEWPORT_TOP)
-
 static zbuf_t zbuf[VIEWPORT_WIDTH*VIEWPORT_HEIGHT*ZBUFF_PARITY_MULT];
 static float zscale;
 
@@ -467,11 +464,11 @@ drawLine_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, int thic
 	int32_t dzdy = slope(z1, p1->y, z2, p2->y + 1, ZSHIFT);
 	int32_t dzdx = slope(z1, p1->x, z2, p2->x, ZSHIFT);
 
-	if ( y < 0 )
+	if ( y < VIEWPORT_TOP )
 	{
-		x += -y * dx;
-		z += -y * dzdy;
-		y = 0;
+		x += (VIEWPORT_TOP-y) * dx;
+		z += (VIEWPORT_TOP-y) * dzdy;
+		y = VIEWPORT_TOP;
 	}
 	
 	while ( y <= endy )
@@ -520,10 +517,10 @@ drawLine(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, int thick, ui
 	int32_t x = p1->x * (1<<16);
 	int32_t dx = slope(p1->x, p1->y, p2->x, p2->y, 16);
 	
-	if ( y < 0 )
+	if ( y < VIEWPORT_TOP )
 	{
-		x += -y * dx;
-		y = 0;
+		x += (VIEWPORT_TOP-y) * dx;
+		y = VIEWPORT_TOP;
 	}
 
 	while ( y <= endy )
@@ -550,7 +547,8 @@ static void fillRange(uint8_t* bitmap, int rowstride, int y, int endy, int32_t* 
 {
 	int32_t x1 = *x1p, x2 = *x2p;
 	
-	if ( endy < 0 )
+	if ( endy < VIEWPORT_TOP )
+	// early-out
 	{
 		int dy = endy - y;
 		*x1p = x1 + dy * dx1;
@@ -558,11 +556,11 @@ static void fillRange(uint8_t* bitmap, int rowstride, int y, int endy, int32_t* 
 		return;
 	}
 	
-	if ( y < 0 )
+	if ( y < VIEWPORT_TOP )
 	{
-		x1 += -y * dx1;
-		x2 += -y * dx2;
-		y = 0;
+		x1 += (VIEWPORT_TOP-y) * dx1;
+		x2 += (VIEWPORT_TOP-y) * dx2;
+		y = VIEWPORT_TOP;
 	}
 	
 	while ( y < endy )

@@ -169,6 +169,9 @@ void m3d_free(void* ptr);
 
 void mini3d_setRealloc(void* (*realloc)(void* ptr, size_t size));
 
+#define VIEWPORT_WIDTH (VIEWPORT_RIGHT - VIEWPORT_LEFT)
+#define VIEWPORT_HEIGHT (VIEWPORT_BOTTOM - VIEWPORT_TOP)
+
 #define LIGHTING_PATTERN_COUNT 33
 typedef uint8_t Pattern[8];
 typedef Pattern PatternTable[LIGHTING_PATTERN_COUNT];

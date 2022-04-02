@@ -107,21 +107,21 @@ SYM(drawFragment)(
     if ( endx > VIEWPORT_RIGHT )
 		endx = VIEWPORT_RIGHT;
 	
-	if ( x < 0 )
+	if ( x < VIEWPORT_LEFT )
 	{
         #ifdef RENDER_Z
-		z += -x * dzdx;
+		z += (VIEWPORT_LEFT-x) * dzdx;
         #endif
         
         #ifdef RENDER_T
-            u += -x * dudx;
-            v += -x * dvdx;
+            u += (VIEWPORT_LEFT-x) * dudx;
+            v += (VIEWPORT_LEFT-x) * dvdx;
             #ifdef RENDER_P
-                w += -x * dwdx;
+                w += (VIEWPORT_LEFT-x) * dwdx;
             #endif
         #endif
         
-		x = 0;
+		x = VIEWPORT_LEFT;
 	}
 
 	uint32_t mask = 0;
@@ -332,7 +332,7 @@ SYM(fillRange)(
     #endif
 	int count = 0;
 	
-	if ( endy < 0 )
+	if ( endy < VIEWPORT_TOP )
     // early-out
 	{
 		int dy = endy - y;
@@ -351,21 +351,21 @@ SYM(fillRange)(
 		return;
 	}
 
-	if ( y < 0 )
+	if ( y < VIEWPORT_TOP )
 	{
-		x1 += -y * dx1;
-		x2 += -y * dx2;
+		x1 += (VIEWPORT_TOP-y) * dx1;
+		x2 += (VIEWPORT_TOP-y) * dx2;
         #ifdef RENDER_Z
-		z += -y * dzdy;
+		z += (VIEWPORT_TOP-y) * dzdy;
         #endif
         #ifdef RENDER_T
-		    u += -y * dudy;
-    		v += -y * dvdy;
+		    u += (VIEWPORT_TOP-y) * dudy;
+    		v += (VIEWPORT_TOP-y) * dvdy;
             #ifdef RENDER_P
-                w += -y * dwdy;
+                w += (VIEWPORT_TOP-y) * dwdy;
             #endif
         #endif
-		y = 0;
+		y = VIEWPORT_TOP;
 	}
     
     #ifdef RENDER_T

@@ -16,9 +16,6 @@
 
 #include <pd_api.h>
 
-#define WIDTH 400
-#define HEIGHT 240
-
 void
 Scene3DNode_init(Scene3DNode* node)
 {
@@ -257,14 +254,14 @@ static void applyPerspectiveToPoint(Scene3D* scene, Point3D* p)
 	{
 		if (p->z >= CLIP_EPSILON)
 		{
-			p->x = scene->scale * (p->x / p->z + 1.6666666 * scene->centerx);
-			p->y = scene->scale * (p->y / p->z + scene->centery);
+			p->x = scene->scale * (p->x / p->z) + scene->centerx;
+			p->y = scene->scale * (p->y / p->z) + scene->centery;
 		}
 	}
 	else
 	{
-		p->x = scene->scale * (p->x + 1.6666666 * scene->centerx);
-		p->y = scene->scale * (p->y + scene->centery);
+		p->x = scene->scale * (p->x) + scene->centerx;
+		p->y = scene->scale * (p->y) + scene->centery;
 	}
 }
 
@@ -890,8 +887,8 @@ Scene3D_setGlobalLight(Scene3D* scene, Vector3D light)
 void
 Scene3D_setCenter(Scene3D* scene, float x, float y)
 {
-	scene->centerx = x;
-	scene->centery = y;
+	scene->centerx = x * scene->scale * (float)VIEWPORT_WIDTH / (float)VIEWPORT_HEIGHT + VIEWPORT_LEFT;
+	scene->centery = y * scene->scale + VIEWPORT_TOP;
 }
 
 Scene3DNode*
@@ -974,7 +971,7 @@ Scene3D_setCamera(Scene3D* scene, Point3D origin, Point3D lookAt, float scale, V
 	dir.dy *= linv;
 	dir.dz *= linv;
 	
-	scene->scale = 240 * scale;
+	scene->scale = VIEWPORT_HEIGHT * scale;
 
 	// first yaw around the y axis
 	
@@ -1046,10 +1043,10 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 	
 	// quick bounds check
 	
-	if ( (x1 < 0 && x2 < 0 && x3 < 0 && (face->p4 == NULL || face->p4->x < 0)) ||
-		 (x1 >= WIDTH && x2 >= WIDTH && x3 >= WIDTH && (face->p4 == NULL || face->p4->x >= WIDTH)) ||
-		 (y1 < 0 && y2 < 0 && y3 < 0 && (face->p4 == NULL || face->p4->y < 0)) ||
-		 (y1 >= HEIGHT && y2 >= HEIGHT && y3 >= HEIGHT && (face->p4 == NULL || face->p4->y >= HEIGHT)) )
+	if ( (x1 < VIEWPORT_LEFT && x2 < VIEWPORT_LEFT && x3 < VIEWPORT_LEFT && (face->p4 == NULL || face->p4->x < VIEWPORT_LEFT)) ||
+		 (x1 >= VIEWPORT_RIGHT && x2 >= VIEWPORT_RIGHT && x3 >= VIEWPORT_RIGHT && (face->p4 == NULL || face->p4->x >= VIEWPORT_RIGHT)) ||
+		 (y1 < VIEWPORT_TOP && y2 < VIEWPORT_TOP && y3 < VIEWPORT_TOP && (face->p4 == NULL || face->p4->y < VIEWPORT_TOP)) ||
+		 (y1 >= VIEWPORT_BOTTOM && y2 >= VIEWPORT_BOTTOM && y3 >= VIEWPORT_BOTTOM && (face->p4 == NULL || face->p4->y >= VIEWPORT_BOTTOM)) )
 		return;
 
 	if ( shape->prototype->isClosed )
@@ -1256,8 +1253,10 @@ drawWireframe(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 
 		// quick bounds check
 		
-		if ( (x1 < 0 && x2 < 0 && x3 < 0 && x4 < 0) || (x1 >= WIDTH && x2 >= WIDTH && x3 >= WIDTH && x4 >= WIDTH) ||
-			 (y1 < 0 && y2 < 0 && y3 < 0 && x4 < 0) || (y1 >= HEIGHT && y2 >= HEIGHT && y3 >= HEIGHT && y4 >= HEIGHT) )
+		if ( (x1 < VIEWPORT_LEFT && x2 < VIEWPORT_LEFT && x3 < VIEWPORT_LEFT && x4 < VIEWPORT_LEFT)
+			|| (x1 >= VIEWPORT_RIGHT && x2 >= VIEWPORT_RIGHT && x3 >= VIEWPORT_RIGHT && x4 >= VIEWPORT_RIGHT)
+			|| (y1 < VIEWPORT_TOP && y2 < VIEWPORT_TOP && y3 < VIEWPORT_TOP && y4 < VIEWPORT_TOP)
+			|| (y1 >= VIEWPORT_BOTTOM && y2 >= VIEWPORT_BOTTOM && y3 >= VIEWPORT_BOTTOM && y4 >= VIEWPORT_BOTTOM) )
 			continue;
 
 		if ( (style & kRenderWireframeBack) == 0 )
