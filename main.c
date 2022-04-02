@@ -18,8 +18,14 @@
 #endif
 
 
-DllExport int
-eventHandler(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg)
+#ifdef MINI3D_AS_LIBRARY
+	int
+	mini3D_eventHandler
+#else
+	DllExport int
+	eventHandler
+#endif
+(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg)
 {
 	if ( event == kEventInitLua )
 		register3D(playdate);

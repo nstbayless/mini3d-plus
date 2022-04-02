@@ -29,10 +29,52 @@ You must have installed the [Playdate SDK](https://play.date/dev/). Be sure to s
 
 This will build and launch the kart example:
 
-```
+```sh
 make pdc
 PlaydateSimulator ./3DLibrary.pdx
 ```
+
+## Using as a Library in another Project
+
+Instead of copying the Mini3D+ library wholesale and editing it for your own purposes, it is recommended to instead include the Mini3D+ library
+externally (or as a git submodule). You will need to use a Makefile in order to acheive this. Instructions for C projects and Lua-only projects that don't already have a Makefile are provided:
+
+### For C Projects
+
+Replace the following line in your Makefile: `include $(SDK)/C_API/buildsupport/common.mk` with
+
+```Makefile
+CLANGDEFS += -DMINI3D_AS_LIBRARY
+UDEFS += -DMINI3D_AS_LIBRARY
+include path/to/mini3d-plus/Makefile
+```
+
+(**Important**: you must edit this include path according to the location of mini3d-plus on your system!)
+
+Then, in the C file with your [`eventHandler` function](https://sdk.play.date/1.9.3/Inside%20Playdate%20with%20C.html#_game_initialization), add this include:
+
+```
+#include <mini3d.h>
+```
+
+and add this line to your `eventHandler`:
+
+```
+mini3d_eventHandler(playdate, event, arg);
+```
+
+### For Lua-only projects (with no Makefile)
+
+Create the following file in your project root, and call it `Makefile`:
+
+```
+PRODUCT = MyProject.pdx
+
+include /path/to/mini3d-plus/Makefile
+```
+(**Important**: you must edit this include path according to the location of mini3d-plus on your system!)
+
+From now on, instead of using `pdc` to compile your project, you must follow the instructions in the [Playdate C guide](https://sdk.play.date/1.9.3/Inside%20Playdate%20with%20C.html). You will likely need to do `make simulator pdc` (use `make device` to build for an actual Playdate instead of the simulator).
 
 ## Credits
 

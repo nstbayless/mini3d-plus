@@ -183,4 +183,9 @@ typedef struct PlaydateAPI PlaydateAPI;
 typedef struct LCDBitmap LCDBitmap;
 PlaydateAPI* pd;
 
+#ifdef MINI3D_AS_LIBRARY
+typedef PlaydateAPI PlaydateAPI;
+int mini3d_eventHandler(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
+#endif
+
 #endif /* mini3d_h */
