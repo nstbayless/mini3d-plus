@@ -3,3 +3,4 @@
 build
 *.bin
 *.so
+*.blend[0-9]
