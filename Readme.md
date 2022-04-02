@@ -44,7 +44,7 @@ externally (or as a git submodule). You will need to use a Makefile in order to 
 Replace the following line in your Makefile: `include $(SDK)/C_API/buildsupport/common.mk` with
 
 ```Makefile
-CLANGDEFS += -DMINI3D_AS_LIBRARY
+CLANGFLAGS += -DMINI3D_AS_LIBRARY
 UDEFS += -DMINI3D_AS_LIBRARY
 include path/to/mini3d-plus/Makefile
 ```
