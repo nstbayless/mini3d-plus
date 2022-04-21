@@ -106,7 +106,7 @@
 // Currently, this is only implemented for textured surfaces.
 // (Untextured surfaces can achieve a similar effect with custom dither patterns)
 #ifndef ENABLE_POLYGON_SCANLINING
-    #define ENABLE_POLYGON_SCANLINING 0
+    #define ENABLE_POLYGON_SCANLINING 1
 #endif
 
 // clip faces which are partly behind the camera.

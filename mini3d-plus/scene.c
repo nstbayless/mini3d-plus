@@ -1076,9 +1076,9 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 	else
 	{
 		if ( shape->inverted )
-			v = (1.0 + Vector3DDot(face->normal, scene->light)) / 2;
+			v = (1.0f + Vector3DDot(face->normal, scene->light)) / 2;
 		else
-			v = (1.0 - Vector3DDot(face->normal, scene->light)) / 2;
+			v = (1.0f - Vector3DDot(face->normal, scene->light)) / 2;
 
 		if ( c > 0 )
 			v = c + (1-c) * v; // map [0,1] to [c,1]
@@ -1089,7 +1089,7 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 	// cheap gamma adjust
 	// v = v * v;
 
-	int vi = (int)((LIGHTING_PATTERN_COUNT - 0.01) * v);
+	int vi = (int)((LIGHTING_PATTERN_COUNT - 0.01f) * v);
 
 	if ( vi > (LIGHTING_PATTERN_COUNT - 1) )
 		vi = LIGHTING_PATTERN_COUNT - 1;

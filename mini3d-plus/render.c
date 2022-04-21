@@ -88,11 +88,11 @@ render_distance_bounds(Point3D* p1, Point3D* p2, Point3D* p3)
 
 // decreasing this value will cause ripples in projected textures
 // increasing will double the size of the lookup table
-#define PROJECTION_FIDELITY 12
+#define PROJECTION_FIDELITY 11
 
 // decreasing this value too much will cause ripples
 // increasing too much may cause overflow errors
-#define PROJECTION_FIDELITY_B 19
+#define PROJECTION_FIDELITY_B 18
 
 
 #define DIVISION_TABLE_C (2 << PROJECTION_FIDELITY)
