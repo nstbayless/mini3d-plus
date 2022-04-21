@@ -60,9 +60,9 @@ ifneq ("$(wildcard $(SELF_DIR)/librif/src/)","")
 SRC += \
 	$(SELF_DIR)/librif/src/librif.c \
 	$(SELF_DIR)/librif/src/playdate/librif_luaglue.c
-CLANGFLAGS += -I$(SELF_DIR)/librif/src/ -DPLAYDATE=1
-UDEFS += -DM3D_LIBRIF
-UINCDIR += $(SELF_DIR)/librif/src
+	CLANGFLAGS += -I$(SELF_DIR)/librif/src/ -DPLAYDATE=1
+	UDEFS += -DM3D_LIBRIF
+	UINCDIR += $(SELF_DIR)/librif/src
 endif
 
 include $(SDK)/C_API/buildsupport/common.mk

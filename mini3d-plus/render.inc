@@ -425,28 +425,89 @@ SYM(fillRange)(
         {
             #if defined(RENDER_T) && defined(RENDER_Z) && defined(RENDER_G)
                 #if ENABLE_TEXTURES_MASK
-                (hasmask
-                    ? (!fmt ? drawFragment_ztag_OPT_p : drawFragment_ztagl_OPT_p)
-                    : (!fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)
-                )(
-                #else
-                (!fmt ? drawFragment_ztg_OPT_p : drawFragment_ztgl_OPT_p)(
+                if (hasmask)
+                {
+                    if (fmt)
+                    {
+                        drawFragment_ztagl_OPT_p(
+                            (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
+                            z, dzdx,
+                            u, dudx, v, dvdx,
+                            bmdata, rowbytes, width, height
+                            #if ENABLE_CUSTOM_PATTERNS
+                            , pattern
+                            #endif
+                            #ifdef RENDER_P
+                                , w, dwdx
+                            #endif
+                            #if ENABLE_TEXTURES_LIGHTING
+                            , light, texp
+                            #endif
+                            , y % 8
+                        );
+                    }
+                    else
+                    {
+                        drawFragment_ztag_OPT_p(
+                            (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
+                            z, dzdx,
+                            u, dudx, v, dvdx,
+                            bmdata, rowbytes, width, height
+                            #if ENABLE_CUSTOM_PATTERNS
+                            , pattern
+                            #endif
+                            #ifdef RENDER_P
+                                , w, dwdx
+                            #endif
+                            #if ENABLE_TEXTURES_LIGHTING
+                            , light, texp
+                            #endif
+                            , y % 8
+                        );
+                    }
+                }
+                else
                 #endif
-                    (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
-                    z, dzdx,
-                    u, dudx, v, dvdx,
-                    bmdata, rowbytes, width, height
-                    #if ENABLE_CUSTOM_PATTERNS
-                    , pattern
-                    #endif
-                    #ifdef RENDER_P
-                        , w, dwdx
-                    #endif
-                    #if ENABLE_TEXTURES_LIGHTING
-                    , light, texp
-                    #endif
-                    , y % 8
-                );
+                {
+                    if (fmt)
+                    {
+                        drawFragment_ztgl_OPT_p(
+                            (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
+                            z, dzdx,
+                            u, dudx, v, dvdx,
+                            bmdata, rowbytes, width, height
+                            #if ENABLE_CUSTOM_PATTERNS
+                            , pattern
+                            #endif
+                            #ifdef RENDER_P
+                                , w, dwdx
+                            #endif
+                            #if ENABLE_TEXTURES_LIGHTING
+                            , light, texp
+                            #endif
+                            , y % 8
+                        );
+                    }
+                    else
+                    {
+                        drawFragment_ztg_OPT_p(
+                            (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
+                            z, dzdx,
+                            u, dudx, v, dvdx,
+                            bmdata, rowbytes, width, height
+                            #if ENABLE_CUSTOM_PATTERNS
+                            , pattern
+                            #endif
+                            #ifdef RENDER_P
+                                , w, dwdx
+                            #endif
+                            #if ENABLE_TEXTURES_LIGHTING
+                            , light, texp
+                            #endif
+                            , y % 8
+                        );
+                    }
+                }
             #elif defined(RENDER_T) && !defined(RENDER_Z) && defined(RENDER_G)
                 #if ENABLE_TEXTURES_MASK
                 (hasmask

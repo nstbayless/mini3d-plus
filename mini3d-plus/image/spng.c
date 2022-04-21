@@ -3782,7 +3782,9 @@ int spng_decode_image(spng_ctx *ctx, void *out, size_t len, int fmt, int flags)
         float screen_gamma = 2.2f;
         float exponent = file_gamma * screen_gamma;
 
+        #ifndef __ARMCOMPILER_VERSION
         if(FP_ZERO == fpclassify(exponent)) return decode_err(ctx, SPNG_EGAMA);
+        #endif
 
         exponent = 1.0f / exponent;
 

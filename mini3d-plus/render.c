@@ -6,12 +6,16 @@
 //  Copyright © 2015 Panic, Inc. All rights reserved.
 //
 
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__ARMCOMPILER_VERSION)
+#pragma OMax
+#elif defined(__GNUC__) || defined(__clang__)
 #pragma GCC optimize ("O3")
-#pragma GCC optimize ("-fsingle-precision-constant")
-//#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 
-// OPTIMIZE: consider using -ffast-math
+#if defined(__GNUC__) || defined(__clang__)
+#pragma GCC optimize ("-fsingle-precision-constant")
+#pragma GCC optimize ("-ffast-math")
+//#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
 
 #include <stdint.h>
@@ -828,7 +832,7 @@ projective_ratio_test(Point3D* p1, Point3D* p2, Point3D* p3)
 	// OPTIMIZE: try using integers instead
 	float area2 = (p1->x * p2->y + p2->x * p3->y + p3->x * p1->y
 	              -p1->y * p2->x - p2->y * p3->x - p3->y * p1->x);
-	area2 = fabs(area2);
+	area2 = fabsf(area2);
 	
 	return (area2 * zmax > zmin * TEXTURE_PROJECTIVE_RATIO_THRESHOLD * 64 * 64);
 }

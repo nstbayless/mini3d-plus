@@ -106,7 +106,7 @@
 // Currently, this is only implemented for textured surfaces.
 // (Untextured surfaces can achieve a similar effect with custom dither patterns)
 #ifndef ENABLE_POLYGON_SCANLINING
-    #define ENABLE_POLYGON_SCANLINING 1
+    #define ENABLE_POLYGON_SCANLINING 0
 #endif
 
 // clip faces which are partly behind the camera.
@@ -187,7 +187,7 @@ extern PatternTable patterns;
 
 typedef struct PlaydateAPI PlaydateAPI;
 typedef struct LCDBitmap LCDBitmap;
-PlaydateAPI* pd;
+extern PlaydateAPI* pd;
 
 #ifdef MINI3D_AS_LIBRARY
 typedef PlaydateAPI PlaydateAPI;

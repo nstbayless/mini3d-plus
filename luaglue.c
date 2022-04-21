@@ -17,6 +17,10 @@
 #include "texture.h"
 #include "pattern.h"
 
+#ifndef M_PI
+	#define M_PI 3.1415926535f
+#endif
+
 PlaydateAPI* pd = NULL;
 
 static const lua_reg lib3DScene[];
