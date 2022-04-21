@@ -412,18 +412,18 @@ static void calculateClipping_straddle22(
 #endif
 )
 {
-	clip->p1 = a1;
-	clip->p2 = *a2;
-	float pa2b1 = interpolatePointAtZClip(&clip->p3, a2, b1);
-	float pa1b2 = interpolatePointAtZClip(&clip->p4, a1, b2);
+	float pa2b1 = interpolatePointAtZClip(&clip->p2, a2, b1);
+	float pa1b2 = interpolatePointAtZClip(&clip->p3, a1, b2);
+	clip->p4 = *a1;
+	clip->p1 = a2;
 	
 	#if ENABLE_TEXTURES
 	if (POINT_FT_NOT_NULL(ta1))
 	{
-		clip->tex.t4 = *ta1;
-		clip->tex.t1 = *ta2;
-		interpolatePoint2D(&clip->tex.t2, ta2, tb1, pa2b1);
-		interpolatePoint2D(&clip->tex.t3, ta1, tb2, pa1b2);
+		interpolatePoint2D(&clip->tex.t1, ta2, tb1, pa2b1);
+		interpolatePoint2D(&clip->tex.t2, ta1, tb2, pa1b2);
+		clip->tex.t3 = *ta1;
+		clip->tex.t4 = *ta2;
 		clip->tex.texture_enabled = 1;
 	}
 	else

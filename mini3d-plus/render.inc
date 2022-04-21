@@ -227,11 +227,18 @@ SYM(drawFragment)(
                 {
                     combined = tex;
                 }
+                
+                #if ENABLE_DISTANCE_FOG
+                    // ranges from 0 to 0xffff, where 0xffff means no fog.
+                    uint32_t fogp = fog_transform_projective(z >> 8);
+                    combined = (combined * fogp + (FOG_SCALE - fogp) * render_fog_color) / FOG_SCALE;
+                #endif
+                
                 OPTU32(uint8_t) pattern_byte = 
                 #if ENABLE_CUSTOM_PATTERNS
-                (*pattern)
+                    (*pattern)
                 #else
-                patterns
+                    patterns
                 #endif
                 [combined][pattern_y];
                 texpix = (pattern_byte << (x % 8)) & 0x80;

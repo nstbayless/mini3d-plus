@@ -1177,6 +1177,43 @@ static int get_render_distance(lua_State* L)
 }
 #endif
 
+#if ENABLE_DISTANCE_FOG
+static int set_render_fog(lua_State* L)
+{
+	float color = 0;
+	float startz = 0;
+	float endz = 1;
+	
+	size_t argc = pd->lua->getArgCount();
+	
+	if (argc > 0)
+	{
+		startz = pd->lua->getArgFloat(1);
+	}
+	if (argc > 1)
+	{
+		endz = pd->lua->getArgFloat(2);
+	}
+	if (argc > 2)
+	{
+		color = pd->lua->getArgFloat(3);
+	}
+	
+	startz = MAX(startz, 0);
+	endz = MAX(endz, 0);
+	
+	fog_set(
+		CLAMP(
+			(uint8_t)(color * (LIGHTING_PATTERN_COUNT - 1) + 0.5),
+			0, LIGHTING_PATTERN_COUNT - 1),
+		startz,
+		endz
+	);
+	
+	return 0;	
+}
+#endif
+
 static const lua_reg lib3DRenderer[] =
 {
 	#if ENABLE_INTERLACE
@@ -1186,6 +1223,9 @@ static const lua_reg lib3DRenderer[] =
 	#if ENABLE_RENDER_DISTANCE_MAX
 	{ "setRenderDistance", set_render_distance },
 	{ "getRenderDistance", get_render_distance },
+	#endif
+	#if ENABLE_DISTANCE_FOG
+	{ "setFog", set_render_fog },
 	#endif
 	{ NULL,				NULL }
 };

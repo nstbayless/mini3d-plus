@@ -158,6 +158,12 @@
     #define ZBUF16
 #endif
 
+// distance fog to smoothly fade out objects in the distance to a particular tone.
+// requires Z-based rendering.
+#ifndef ENABLE_DISTANCE_FOG
+    #define ENABLE_DISTANCE_FOG 0
+#endif
+
 #include <stddef.h>
 #include <stdint.h>
 #include <string.h>
@@ -186,6 +192,26 @@ PlaydateAPI* pd;
 #ifdef MINI3D_AS_LIBRARY
 typedef PlaydateAPI PlaydateAPI;
 int mini3d_eventHandler(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
+#endif
+
+#ifndef FORCEINLINE
+    #ifdef __MSVC__
+    #define FORCEINLINE __forceinline
+    #else
+    #define FORCEINLINE __attribute__((always_inline))
+    #endif
+#endif
+
+#if !defined(MIN)
+#define MIN(a, b) (((a)<(b))?(a):(b))
+#endif
+
+#if !defined(MAX)
+#define MAX(a, b) (((a)>(b))?(a):(b))
+#endif
+
+#if !defined(CLAMP)
+#define CLAMP(a, b, x) (MAX(a, MIN(b, x)))
 #endif
 
 #endif /* mini3d_h */

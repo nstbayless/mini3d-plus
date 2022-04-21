@@ -90,4 +90,8 @@ float getRenderDistanceMax();
 void precomputeProjectionTable(void);
 #endif
 
+#if ENABLE_DISTANCE_FOG
+void fog_set(uint8_t color, float startz, float endz);
+#endif
+
 #endif /* render_h */

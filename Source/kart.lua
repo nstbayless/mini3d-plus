@@ -77,9 +77,9 @@ if j then
             terrain:setFaceTextureMap(
                 f_idx,
                 0, 0,
-                0, 1,
+                1, 0,
                 1, 1,
-                1, 0
+                0, 1
             )
         end
     end

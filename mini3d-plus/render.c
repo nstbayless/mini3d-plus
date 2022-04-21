@@ -22,18 +22,6 @@
 // to be a full word because it's faster.
 #define OPTU32(x) x
 
-#if !defined(MIN)
-#define MIN(a, b) (((a)<(b))?(a):(b))
-#endif
-
-#if !defined(MAX)
-#define MAX(a, b) (((a)>(b))?(a):(b))
-#endif
-
-#if !defined (CLAMP)
-#define CLAMP(a, b, x) (MAX(a, MIN(b, x)))
-#endif
-
 typedef int16_t uvw_int_t;
 typedef int32_t uvw_int2_t;
 #define UV_SHIFT 21
@@ -236,6 +224,43 @@ void resetZBuffer(float zmin)
 	zbuff_parity = !zbuff_parity;
 	#endif
 	zscale = ZSCALE_MULT * (zmin + Z_BIAS);
+}
+#endif
+
+#if ENABLE_DISTANCE_FOG
+static uint8_t render_fog_color = 0;
+
+#define FOG_SCALE 0x1000000
+
+// projective variations
+static uint32_t render_fog_endz_p = 0;
+static uint32_t render_fog_startz_p = 0;
+static uint32_t render_fog_slope_p = 0;
+
+// z: 0 is at camera, 1 is far away.
+void fog_set(uint8_t color, float startz, float endz)
+{
+	render_fog_color = color;
+	render_fog_startz_p = FOG_SCALE * (zscale / startz);
+	render_fog_endz_p = FOG_SCALE * (zscale / endz);
+	if (render_fog_endz_p < render_fog_startz_p)
+	{
+		render_fog_slope_p = (float)FOG_SCALE / (render_fog_startz_p - render_fog_endz_p);
+	}
+	pd->system->logToConsole("%f, %f | %x, %x : %x",
+		startz, endz,
+		render_fog_startz_p, render_fog_endz_p, render_fog_slope_p
+	);
+}
+
+// z ranges from 0 to 0x10000, where 0 means far.
+// return value from 0 to 0x10000, where 0 means FULL fog.
+FORCEINLINE uint32_t
+fog_transform_projective(uint32_t z)
+{
+	if (z >= render_fog_startz_p) return FOG_SCALE;
+	if (z <= render_fog_endz_p) return 0x0;
+	return (z - render_fog_endz_p) * render_fog_slope_p;
 }
 #endif
 
