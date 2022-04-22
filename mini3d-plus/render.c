@@ -207,6 +207,20 @@ scanlinePermitsRow(int y, ScanlineFill* scanline)
 	#define ZBUFF_PARITY_MULT 1
 #endif
 
+#define ZCOORD_INT
+
+#ifdef ZCOORD_INT
+typedef uint32_t zcoord_t;
+#define slopez(a, b, c, d, e) slope(a, b, c, d, e)
+#else
+// although it would seem integers are faster, we actually can exploit that
+// there are additional registers in the FPU which we wouldn't otherwise be using.
+typedef float zcoord_t;
+#define slopez(a, b, c, d, X) slopef(a, b, c, d)
+#undef ZSHIFT
+#define ZSHIFT 0
+#endif
+
 static zbuf_t zbuf[VIEWPORT_WIDTH*VIEWPORT_HEIGHT*ZBUFF_PARITY_MULT];
 static float zscale;
 
@@ -285,10 +299,7 @@ static inline uint32_t swap(uint32_t n)
 static inline void
 _drawMaskPattern(uint32_t* p, uint32_t mask, uint32_t color)
 {
-	if ( mask == 0xffffffff )
-		*p = color;
-	else
-		*p = (*p & ~mask) | (color & mask);
+	*p = (*p & ~mask) | (color & mask);
 }
 
 static void
@@ -451,6 +462,20 @@ static inline int32_t slope(float x1, float y1, float x2, float y2, const int sh
 		return dx / dy * (1<<shift);
 }
 
+static inline float slopef(float x1, float y1, float x2, float y2)
+{
+	float dx = x2 - x1;
+	float dy = y2 - y1;
+	if (dy == 0)
+	{
+		return dx * 1000.0f;
+	}
+	else
+	{
+		return dx / dy;
+	}
+}
+
 static inline int64_t slope64(float x1, float y1, float x2, float y2, const int shift)
 {
 	float dx = x2-x1;
@@ -488,10 +513,10 @@ drawLine_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, int thic
 
 	if ( z1 > zscale ) z1 = zscale;
 	if ( z2 > zscale ) z2 = zscale;
-	uint32_t z = z1 * (1<<ZSHIFT);
+	zcoord_t z = z1 * (1<<ZSHIFT);
 
-	int32_t dzdy = slope(z1, p1->y, z2, p2->y + 1, ZSHIFT);
-	int32_t dzdx = slope(z1, p1->x, z2, p2->x, ZSHIFT);
+	zcoord_t dzdy = slopez(z1, p1->y, z2, p2->y + 1, ZSHIFT);
+	zcoord_t dzdx = slopez(z1, p1->x, z2, p2->x, ZSHIFT);
 
 	if ( y < VIEWPORT_TOP )
 	{
@@ -793,7 +818,11 @@ LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point
 		dzdy = slope(z1, p1->y, z2, p2->y, 16);
 	}
 	
-	uint32_t z = z1 * (1<<16);
+	#ifdef ZCOORD_INT
+	zcoord_t z = z1 * (1 << ZSHIFT);
+	#else
+	zcoord_t z = z1;
+	#endif
 
 	fillRange_z(bitmap, rowstride, p1->y, MIN(VIEWPORT_BOTTOM, p2->y), &x1, dx1, &x2, dx2, &z, dzdy, dzdx, pattern);
 	
@@ -803,7 +832,7 @@ LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point
 	{
 		dzdy = slope(z2, p2->y, z3, p3->y, 16);
 		x1 = p2->x * (1<<16);
-		z = z2 * (1<<16);
+		z = z2 * (1<<ZSHIFT);
 		fillRange_z(bitmap, rowstride, p2->y, endy, &x1, dx, &x2, dx2, &z, dzdy, dzdx, pattern);
 	}
 	else
@@ -823,7 +852,7 @@ projective_ratio_test(Point3D* p1, Point3D* p2, Point3D* p3)
 	float zmin = MIN(p1->z, MIN(p2->z, p3->z));
 	float zmax = MAX(p1->z, MAX(p2->z, p3->z));
 	
-	return zmax > zmin * TEXTURE_PROJECTIVE_RATIO_THRESHOLD;
+	//return zmax * TEXTURE_PROJECTIVE_RATIO_THRESHOLD > zmin;
 	
 	// XXX
 	// UNUSED
@@ -834,7 +863,7 @@ projective_ratio_test(Point3D* p1, Point3D* p2, Point3D* p3)
 	              -p1->y * p2->x - p2->y * p3->x - p3->y * p1->x);
 	area2 = fabsf(area2);
 	
-	return (area2 * zmax > zmin * TEXTURE_PROJECTIVE_RATIO_THRESHOLD * 64 * 64);
+	return (area2 * zmax > zmin * (1 << 10));
 }
 #endif
 
@@ -975,7 +1004,7 @@ LCDRowRange fillTriangle_zt(
 		#endif
 	}
 	
-	uint32_t z = z1 * (1<<16);
+	zcoord_t z = z1 * (1<<ZSHIFT);
 	uvw_int2_t u = u1 * ((uvw_int2_t)(1)<<UV_SHIFT);
 	uvw_int2_t v = v1 * ((uvw_int2_t)(1)<<UV_SHIFT);
 	#if ENABLE_TEXTURES_PROJECTIVE
@@ -1035,7 +1064,7 @@ LCDRowRange fillTriangle_zt(
 		dudy = UV_SLOPE(u2, p2->y, u3, p3->y, UV_SHIFT);
 		dvdy = UV_SLOPE(v2, p2->y, v3, p3->y, UV_SHIFT);
 		x1 = p2->x * (1<<16);
-		z = z2 * (1<<16);
+		z = z2 * (1<<ZSHIFT);
 		u = u2 * ((uvw_int2_t)(1)<<UV_SHIFT);
 		v = v2 * ((uvw_int2_t)(1)<<UV_SHIFT);
 		#if ENABLE_TEXTURES_PROJECTIVE

@@ -75,29 +75,38 @@
     #define TEXTURES_ALWAYS_POWER_OF_2 1
 #endif
 
-// ignored if textures are disabled
-// if 1, textures are mapped with homogenous coordinates.
-// if 0, textures will be significantly warped as they approach
-// the camera.
+// Ignored if textures are disabled.
+// Can take multiple values:
+// 0: always use affine texture mapping
+// 1: always use perspective-correct texture mapping
+// 2: only use affine mapping on polygons whose zmin/zmax > TEXTURE_PROJECTIVE_RATIO_THRESHOLD
+// 3: only use affine mapping on polygons whose zmin/zmax > area * TEXTURE_PROJECTIVE_AREA_FACTOR
 // This is quite expensive. Disable it if at all possible
 // (e.g. if textures are always far from the camera, or always orthogonal to it e.g. imposters)
 #ifndef ENABLE_TEXTURES_PROJECTIVE
     #define ENABLE_TEXTURES_PROJECTIVE 1
 #endif
 
-// requires ENABLE_TEXTURES_PROJECTIVE
+// requires TEXTURE_PERSPECTIVE_MAPPING >= 1
 // skips a division step by using a large lookup table
 // you may need to tweak these constants in render.c to achieve good results: PROJECTION_FIDELITY, PROJECTION_FIDELITY_B, UV_SHIFT, W_SHIFT
+// It's been found that this does not improve performance, so it's unadvisable to set this to 1.
 #ifndef PRECOMPUTE_PROJECTION
-    #define PRECOMPUTE_PROJECTION 1
+    #define PRECOMPUTE_PROJECTION 0
 #endif
 
-// Only applies if if ENABLE_TEXTURES_PROJECTIVE.
+// Only applies if TEXTURE_PERSPECTIVE_MAPPING == 2.
 // If this value is too high, performance may drop.
 // If this value is too low, textures may "jump" slightly as they approach the camera.
 // Comment this definition out entirely to disable this check.
 #ifndef TEXTURE_PROJECTIVE_RATIO_THRESHOLD
-    #define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.9f
+    #define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.85f
+#endif
+
+// only applies if TEXTURE_PERSPECTIVE_MAPPING == 3
+// Increase this value to improve performance at the cost of warped textures
+#ifndef TEXTURE_PROJECTIVE_AREA_FACTOR
+    #define TEXTURE_PROJECTIVE_AREA_FACTOR (1 << 11)
 #endif
 
 // Allows shapes to optionally define a 'scanlining' effect which
@@ -106,7 +115,7 @@
 // Currently, this is only implemented for textured surfaces.
 // (Untextured surfaces can achieve a similar effect with custom dither patterns)
 #ifndef ENABLE_POLYGON_SCANLINING
-    #define ENABLE_POLYGON_SCANLINING 0
+    #define ENABLE_POLYGON_SCANLINING 1
 #endif
 
 // clip faces which are partly behind the camera.
@@ -119,7 +128,7 @@
 // Also, when using the z buffer, increasing this could also increase 
 // the maximum view distance.
 #ifndef CLIP_EPSILON
-    #define CLIP_EPSILON 0.5f
+    #define CLIP_EPSILON 0.75f
 #endif  
 
 // do not render anything beyond a distance specified
@@ -155,13 +164,18 @@
 
 // comment this out to use an 8-bit z-buffer, which is faster but less accurate.
 #if !defined(ZBU32) && !defined(ZBUF16) && !defined(ZBUF8)
-    #define ZBUF16
+    #define ZBUF8
 #endif
 
 // distance fog to smoothly fade out objects in the distance to a particular tone.
 // requires Z-based rendering.
 #ifndef ENABLE_DISTANCE_FOG
     #define ENABLE_DISTANCE_FOG 0
+#endif
+
+// avoid unnecessary calculations for pixels that are obscured by the z buffer
+#ifndef ENABLE_ZRENDERSKIP
+    #define ENABLE_ZRENDERSKIP 1
 #endif
 
 #include <stddef.h>

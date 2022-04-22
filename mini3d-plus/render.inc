@@ -78,7 +78,7 @@ static void
 SYM(drawFragment)(
 	uint32_t* row, zbuf_t* zbrow, int x, int endx
 #ifdef RENDER_Z
-	, uint32_t z, int32_t dzdx
+	, zcoord_t z, zcoord_t dzdx
 #endif
 #ifdef RENDER_T
 	, uvw_int2_t u, uvw_int2_t dudx,
@@ -141,6 +141,37 @@ SYM(drawFragment)(
 
 	while ( (unsigned)x < (unsigned)endx )
 	{
+        #ifdef RENDER_Z
+            #ifdef ZCOORD_INT
+            zbuf_t zi = z >> ZSHIFT;
+            #else
+            zbuf_t zi = z;
+            #endif
+            int zx = x;
+            #if Z_BUFFER_FRAME_PARITY
+            zx *= 2;
+            if (zbrow[zx + 1] != zbuff_parity)
+            {
+                zbrow[zx + 0] = 0;
+            }
+            zbrow[zx + 1] = zbuff_parity;
+            #endif
+            
+            #ifndef RENDER_A
+                if (zi >= zbrow[zx])
+                {
+                    mask |= 0x80000000u >> (x%32);
+                    zbrow[zx] = zi;
+                }
+                #if ENABLE_ZRENDERSKIP
+                else
+                {
+                    goto skip;
+                }
+                #endif
+            #endif
+        #endif
+        
 		// read texture
         #ifdef RENDER_T
             #ifdef RENDER_P
@@ -181,30 +212,20 @@ SYM(drawFragment)(
             #else
                 uint32_t alpha = (maskdata[ti] << (ui % 8)) & 0x80; // either 0x80 or 0.
             #endif
-        #else
-            const OPTU32(uint8_t) alpha = 1;
-        #endif
-        
-        #ifdef RENDER_Z
-            zbuf_t zi = z >> ZSHIFT;
-            int zx = x;
-            #if Z_BUFFER_FRAME_PARITY
-            zx *= 2;
-            if (zbrow[zx + 1] != zbuff_parity)
-            {
-                zbrow[zx + 0] = 0;
-            }
-            zbrow[zx + 1] = zbuff_parity;
+            
+            #ifdef RENDER_Z
+                if (zi >= zbrow[zx] && alpha)
+                {
+                    mask |= 0x80000000u >> (x%32);
+                    zbrow[zx] = zi;
+                }
+                #if ENABLE_ZRENDERSKIP
+                else
+                {
+                    goto skip;
+                }
+                #endif
             #endif
-            if (zi > zbrow[zx] && alpha)
-            {
-                mask |= 0x80000000u >> (x%32);
-                zbrow[zx] = zi;
-            }
-        #elif defined(RENDER_T)
-            mask |= (alpha << 24) >> (x%32);
-        #else
-            #pragma error "render.inc requires at least one of RENDER_Z and RENDER_T defined."
         #endif
         
         #ifdef RENDER_T
@@ -247,6 +268,7 @@ SYM(drawFragment)(
             color |= (texpix << 24) >> (x%32);
         #endif
 		
+        skip:
 		++x;
         
         #ifdef RENDER_Z
@@ -304,7 +326,7 @@ static void
 SYM(fillRange)(
 	uint8_t* bitmap, int rowstride, int y, int endy, int32_t* x1p, int32_t dx1, int32_t* x2p, int32_t dx2
 #ifdef RENDER_Z
-	, uint32_t* zp, int32_t dzdy, int32_t dzdx
+	, zcoord_t* zp, zcoord_t dzdy, zcoord_t dzdx
 #endif
 #ifdef RENDER_T
 	, uvw_int2_t* up, uvw_int2_t dudy, uvw_int2_t dudx,
@@ -329,7 +351,7 @@ SYM(fillRange)(
 {
 	int32_t x1 = *x1p, x2 = *x2p;
     #ifdef RENDER_Z
-	    uint32_t z = *zp;
+	    zcoord_t z = *zp;
     #endif
     #ifdef RENDER_T
         uvw_int2_t u = *up, v = *vp;
