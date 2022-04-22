@@ -5,7 +5,8 @@ local min <const> = math.min
 local max <const> = math.max
 local atan2 <const> = math.atan2
 local abs <const> = math.abs
-
+local dt = 0
+local VMULT <const> = 20.0
 
 scene = lib3d.scene.new()
 scene:setCameraOrigin(0, 5, 6)
@@ -126,6 +127,7 @@ kart = {
     -- position and size
     pos = lib3d.point.new(),
     r = KSIZE * 0.35,
+    rrest = KSIZE * 0.35,
     
     -- facing
     f = lib3d.point.new(-1, -1, 0),
@@ -136,7 +138,9 @@ kart = {
     -- camera angle
     cam = lib3d.point.new(-1, -1, 0),
     
-    gravity = lib3d.point.new(0, 0, -0.06),
+    gravity = lib3d.point.new(0, 0, -1.1),
+    
+    maxgravity = 0.25 * VMULT,
     
     -- not the *literal* maximum speed.
     TOP_SPEED = 4,
@@ -145,10 +149,10 @@ kart = {
         local theta = atan2(self.f.y, self.f.x)
         local theta_mult = exp(-self.v:length() * 2 / self.TOP_SPEED)
         if playdate.buttonIsPressed(playdate.kButtonLeft) then
-            theta -= 0.05 * theta_mult
+            theta -= theta_mult * dt
         end
         if playdate.buttonIsPressed(playdate.kButtonRight) then
-            theta += 0.05 * theta_mult
+            theta += theta_mult * dt
         end
         self.f.x = cos(theta)
         self.f.y = sin(theta)
@@ -157,22 +161,27 @@ kart = {
        self.v -= normal * (normal:dot(self.v) + 0.01)
     end,
     update = function(self)
-        local p = 0.95
+        local p = math.exp(-dt)
         local qspeed = min(self.TOP_SPEED, max(0.5, self.f:dot(self.v)) * 1.15)
         self.v.x = self.v.x * p + self.f.x * (1 - p) * qspeed
         self.v.y = self.v.y * p + self.f.y * (1 - p) * qspeed
-        self.v += self.gravity
         
-        for i = 0,5 do
+        if (self.v:dot(self.gravity) < self.maxgravity) then
+            self.v += self.gravity * dt
+        end
+        
+        local collision_occurred = false
+        for i = 1,5 do
             collision, normal = terrain:collidesSphere(
                 lib3d.point.new(
-                    self.pos.x + self.v.x,
-                    self.pos.y + self.v.y,
-                    self.pos.z + self.v.z + self.r
+                    self.pos.x + self.v.x * dt * VMULT,
+                    self.pos.y + self.v.y * dt * VMULT,
+                    self.pos.z + self.v.z * dt * VMULT + self.r
                 ),
                 self.r
             )
             if (collision) then
+                collision_occurred = true
                 if i == 5 then
                     -- give up
                     print("GIVE UP")
@@ -191,8 +200,15 @@ kart = {
                 end
             end
         end
+        if not collision_occurred then
+            -- gradually expand collision free in the air to
+            -- improve chance of hitting walls
+            self.r += dt * 0.2
+        else
+            self.r = self.rrest
+        end
         
-        self.cam += self.f * 0.1 + self.v * 0.01
+        self.cam += (self.f * 2.0 + self.v * 0.2) * dt
         self.cam.z = 0
         if self.cam:length() < 0.1 then
             self.cam = self.f
@@ -200,7 +216,7 @@ kart = {
             self.cam:normalize()
         end
         
-        self.pos = self.pos + self.v
+        self.pos = self.pos + (self.v * dt) * VMULT
         
         -- bounds
         if self.pos.z < -100 then
@@ -254,7 +270,8 @@ function playdate.AButtonDown()
 end
 
 function playdate.update()
-    
+    dt = max(0.05, min(0.15, playdate.getElapsedTime()))
+    playdate.resetElapsedTime()
     kart:input()
     
     kart:update()
@@ -273,3 +290,5 @@ function playdate.update()
 	scene:draw()
     playdate.drawFPS(0,0)
 end
+
+playdate.resetElapsedTime()

@@ -37,8 +37,11 @@ LCDRowRange fillQuad_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* 
 
 #if ENABLE_TEXTURES && ENABLE_Z_BUFFER
 
-LCDRowRange fillTriangle_zt(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3,
-	Texture* texture, Point2D t1, Point2D t2, Point2D t3
+LCDRowRange fillTriangle_zt(
+	uint8_t* bitmap, int rowstride,
+	Point3D* p1, Point3D* p2, Point3D* p3,
+	Texture* texture,
+	Point2D t1, Point2D t2, Point2D t3
 	#if ENABLE_CUSTOM_PATTERNS
 	, PatternTable* pattern
 	#endif
@@ -51,7 +54,7 @@ LCDRowRange fillTriangle_zt(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D
 	// (in which case, please call the non-texture version of this function instead!)
 	, float lighting, float lighting_weight
 	#endif
-	#if ENABLE_TEXTURES_PROJECTIVE
+	#if TEXTURE_PERSPECTIVE_MAPPING
 	, int projective
 	#endif
 );
@@ -67,7 +70,7 @@ LCDRowRange fillQuad_zt(
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
 	#endif
-	#if ENABLE_TEXTURES_PROJECTIVE
+	#if TEXTURE_PERSPECTIVE_MAPPING
 	, int projective
 	#endif
 );
@@ -86,7 +89,7 @@ void setRenderDistanceMax(float f);
 float getRenderDistanceMax();
 #endif
 
-#if ENABLE_TEXTURES && ENABLE_TEXTURES_PROJECTIVE && PRECOMPUTE_PROJECTION
+#if ENABLE_TEXTURES && TEXTURE_PERSPECTIVE_MAPPING && PRECOMPUTE_PROJECTION
 void precomputeProjectionTable(void);
 #endif
 

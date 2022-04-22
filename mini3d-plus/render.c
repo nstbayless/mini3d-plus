@@ -87,7 +87,7 @@ render_distance_bounds(Point3D* p1, Point3D* p2, Point3D* p3)
 }
 #endif
 
-#if ENABLE_TEXTURES && ENABLE_TEXTURES_PROJECTIVE && PRECOMPUTE_PROJECTION
+#if ENABLE_TEXTURES && TEXTURE_PERSPECTIVE_MAPPING && PRECOMPUTE_PROJECTION
 
 
 // decreasing this value will cause ripples in projected textures
@@ -373,7 +373,7 @@ drawFragment(uint32_t* row, int x1, int x2, uint32_t color)
 	#include "render.inc"
 #endif
 
-#if ENABLE_TEXTURES_PROJECTIVE
+#if TEXTURE_PERSPECTIVE_MAPPING
 	#if ENABLE_TEXTURES && ENABLE_TEXTURES_MASK
 		#define RENDER RT | RA | RP
 		#include "render.inc"
@@ -845,26 +845,108 @@ LCDRowRange fillTriangle_zbuf(uint8_t* bitmap, int rowstride, Point3D* p1, Point
 }
 #endif
 
-#if ENABLE_TEXTURES_PROJECTIVE && defined(TEXTURE_PROJECTIVE_RATIO_THRESHOLD)
-static inline int
+#if TEXTURE_PERSPECTIVE_MAPPING
+
+#if TEXTURE_PERSPECTIVE_MAPPING_SPLIT
+// ranges from 0-1
+typedef float projective_ratio_test_result_t;
+#else
+// boolean
+typedef int projective_ratio_test_result_t;
+#endif
+
+static inline projective_ratio_test_result_t
 projective_ratio_test(Point3D* p1, Point3D* p2, Point3D* p3)
 {
 	float zmin = MIN(p1->z, MIN(p2->z, p3->z));
 	float zmax = MAX(p1->z, MAX(p2->z, p3->z));
 	
-	//return zmax * TEXTURE_PROJECTIVE_RATIO_THRESHOLD > zmin;
+	#if TEXTURE_PERSPECTIVE_MAPPING == 1
+		return 1; // always.
+	#elif TEXTURE_PERSPECTIVE_MAPPING == 2
+		return zmax * TEXTURE_PROJECTIVE_RATIO_THRESHOLD > zmin;
+	#elif TEXTURE_PERSPECTIVE_MAPPING == 3
+		// twice the area of the triangle
+		// https://keisan.casio.com/exec/system/1223520411
+		// OPTIMIZE: try using integers instead
+		float area2 = (p1->x * p2->y + p2->x * p3->y + p3->x * p1->y
+					-p1->y * p2->x - p2->y * p3->x - p3->y * p1->x);
+		area2 = fabsf(area2);
+		
+		return (area2 * zmax > zmin * TEXTURE_PROJECTIVE_AREA_FACTOR);
+	#elif TEXTURE_PERSPECTIVE_MAPPING == 4
 	
-	// XXX
-	// UNUSED
-	// twice the area of the triangle
-	// https://keisan.casio.com/exec/system/1223520411
-	// OPTIMIZE: try using integers instead
-	float area2 = (p1->x * p2->y + p2->x * p3->y + p3->x * p1->y
-	              -p1->y * p2->x - p2->y * p3->x - p3->y * p1->x);
-	area2 = fabsf(area2);
-	
-	return (area2 * zmax > zmin * (1 << 10));
+		// manhattan-circumference of triangle
+		float circumference =
+			fabsf(p1->x - p2->x) + fabsf(p3->x - p2->x) + fabsf(p3->x - p1->x)
+			+ fabsf(p1->y - p2->y) + fabsf(p3->y - p2->y) + fabsf(p3->y - p1->y);
+		
+		#if TEXTURE_PERSPECTIVE_MAPPING_SPLIT
+			return ((circumference / TEXTURE_PROJECTIVE_LENGTH_FACTOR) * zmax - zmin) / (1 << 6);
+		#else
+			return (circumference * zmax > zmin * TEXTURE_PROJECTIVE_LENGTH_FACTOR);
+		#endif
+	#else
+	// safety
+	return 0;
+	#endif
 }
+
+#if TEXTURE_PERSPECTIVE_MAPPING_SPLIT
+// affine triangle
+static Point3D p1a, p2a, p3a;
+static Point2D t1a, t2a, t3a;
+
+// perspective-correct triangle
+static Point3D p1b, p2b, p3b;
+static Point2D t1b, t2b, t3b;
+
+// precondition: p2's y is middle.
+static inline int splitTriangleProjective(
+	float f,
+	Point3D* p1, Point3D* p2, Point3D* p3,
+	Point2D* t1, Point2D* t2, Point2D* t3
+)
+{
+	// p2 is middle y.
+	// swap p1/p3 so that p1's z > p3's z.
+	if (p1->z < p3->z)
+	{
+		Point3D* tmp = p1;
+		p1 = p3;
+		p3 = tmp;
+		
+		Point2D* tmpt = t1;
+		t1 = t3;
+		t3 = tmpt;
+	}
+	
+	// find point between p1, p3
+	Point3D p4 = {
+		p1->x * f + p3->x * (1 - f),
+		p1->y * f + p3->y * (1 - f),
+		p1->z * f + p3->z * (1 - f),
+	};
+	
+	Point2D t4 = {
+		t1->x * f + t3->x * (1 - f),
+		t1->y * f + t3->y * (1 - f),
+	};
+	
+	// output: 
+	// affine (z far)
+	p1a = *p1; p2a = *p2; p3a = p4;
+	t1a = *t1; t2a = *t2; t3a = t4;
+	
+	// perpsective-correct (z near)
+	
+	p1b = p4; p2b = *p2; p3b = *p3;
+	t1b = t4; t2b = *t2; t3b = *t3;
+	
+	return 1;
+}	
+#endif
+
 #endif
 
 #if ENABLE_Z_BUFFER && ENABLE_TEXTURES
@@ -880,7 +962,7 @@ LCDRowRange fillTriangle_zt(
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
 	#endif
-	#if ENABLE_TEXTURES_PROJECTIVE
+	#if TEXTURE_PERSPECTIVE_MAPPING
 	, int projective
 	#endif
 )
@@ -895,6 +977,39 @@ LCDRowRange fillTriangle_zt(
 	int det = (p3->x - p1->x) * (p2->y - p1->y) - (p2->x - p1->x) * (p3->y - p1->y);
 	if ( p1->y > VIEWPORT_BOTTOM || endy < VIEWPORT_TOP || det == 0 )
 		return (LCDRowRange){ 0, 0 };
+	
+	#if TEXTURE_PERSPECTIVE_MAPPING
+	projective_ratio_test_result_t prt_factor;
+	int do_projective_split = 0;
+	if (projective)
+	{
+		prt_factor = projective_ratio_test(p1, p2, p3);
+		#if TEXTURE_PERSPECTIVE_MAPPING_SPLIT
+		if (prt_factor <= 0)
+		{
+			projective = 0;
+		}
+		else if (prt_factor < 1)
+		{
+			// split triangle
+			do_projective_split = splitTriangleProjective(
+				prt_factor,
+				p1, p2, p3, &t1, &t2, &t3
+			);
+			
+			if (do_projective_split)
+			{
+				p1 = &p1b; p2 = &p2b; p3 = &p3b;
+				t1 = t1b; t2 = t2b; t3 = t3b;
+				
+				sortTri_t(&p1, &p2, &p3, &t1, &t2, &t3);
+			}
+		}
+		#else
+		projective = prt_factor;
+		#endif
+	}
+	#endif
 	
 	// scale points to texture size
 	int width, height, fmt;
@@ -916,34 +1031,24 @@ LCDRowRange fillTriangle_zt(
 	float z2 = zscale / (p2->z + Z_BIAS);
 	float z3 = zscale / (p3->z + Z_BIAS);
 	
-	#if ENABLE_TEXTURES_PROJECTIVE
+	#if TEXTURE_PERSPECTIVE_MAPPING
 	float w1;
 	float w2;
 	float w3;
-	#ifndef TEXTURE_PROJECTIVE_RATIO_THRESHOLD
-	w1 = 1 / p1->z;
-	w2 = 1 / p2->z;
-	w3 = 1 / p3->z;
-	int projective_texture_mapping = projective;
-	#else
-	int projective_texture_mapping;
-	if (projective && projective_ratio_test(p1, p2, p3))
+	if (projective)
 	{
-		projective_texture_mapping = 1;
 		w1 = 1 / p1->z;
 		w2 = 1 / p2->z;
 		w3 = 1 / p3->z;
 	}
 	else
 	{
-		projective_texture_mapping = 0;
 		w1 = 1;
 		w2 = 1;
 		w3 = 1;
 	}
-	#endif
 	#else
-	const int projective_texture_mapping = 0;
+	const int projective = 0;
 	const float w1 = 1;
 	const float w2 = 1;
 	const float w3 = 1;
@@ -959,11 +1064,11 @@ LCDRowRange fillTriangle_zt(
 	float mz = z1 + (p2->y-p1->y) * (z3-z1) / (p3->y-p1->y);
 	float mu = u1 + (p2->y-p1->y) * (u3-u1) / (p3->y-p1->y);
 	float mv = v1 + (p2->y-p1->y) * (v3-v1) / (p3->y-p1->y);
-	#if ENABLE_TEXTURES_PROJECTIVE
+	#if TEXTURE_PERSPECTIVE_MAPPING
 	float mw;
-	if (projective_texture_mapping)
+	if (projective)
 	{
-		mw = w1 + (p2->y-p1->y) * (w3-w1) / (p3->y-p1->y);
+		mw = w1 + (p2->y - p1->y) * (w3-w1) / (p3->y - p1->y);
 	}
 	uvw_int2_t dwdx, dwdy;
 	#endif
@@ -979,8 +1084,8 @@ LCDRowRange fillTriangle_zt(
 		dudy = UV_SLOPE(u1, p1->y, u3, p3->y, UV_SHIFT);
 		dvdx = UV_SLOPE(mv, mx, v2, p2->x, UV_SHIFT);
 		dvdy = UV_SLOPE(v1, p1->y, v3, p3->y, UV_SHIFT);
-		#if ENABLE_TEXTURES_PROJECTIVE
-		if (projective_texture_mapping)
+		#if TEXTURE_PERSPECTIVE_MAPPING
+		if (projective)
 		{
 			dwdx = W_SLOPE(mw, mx, w2, p2->x, W_SHIFT);
 			dwdy = W_SLOPE(w1, p1->y, w3, p3->y, W_SHIFT);
@@ -995,8 +1100,8 @@ LCDRowRange fillTriangle_zt(
 		dudy = UV_SLOPE(u1, p1->y, u2, p2->y, UV_SHIFT);
 		dvdx = UV_SLOPE(v2, p2->x, mv, mx, UV_SHIFT);
 		dvdy = UV_SLOPE(v1, p1->y, v2, p2->y, UV_SHIFT);
-		#if ENABLE_TEXTURES_PROJECTIVE
-		if (projective_texture_mapping)
+		#if TEXTURE_PERSPECTIVE_MAPPING
+		if (projective)
 		{
 			dwdx = W_SLOPE(w2, p2->x, mw, mx, W_SHIFT);
 			dwdy = W_SLOPE(w1, p1->y, w2, p2->y, W_SHIFT);
@@ -1007,7 +1112,7 @@ LCDRowRange fillTriangle_zt(
 	zcoord_t z = z1 * (1<<ZSHIFT);
 	uvw_int2_t u = u1 * ((uvw_int2_t)(1)<<UV_SHIFT);
 	uvw_int2_t v = v1 * ((uvw_int2_t)(1)<<UV_SHIFT);
-	#if ENABLE_TEXTURES_PROJECTIVE
+	#if TEXTURE_PERSPECTIVE_MAPPING
 	uvw_int2_t w = w1 * ((uvw_int2_t)(1)<<W_SHIFT);
 	#endif
 	
@@ -1031,9 +1136,9 @@ LCDRowRange fillTriangle_zt(
 		#define fillRange_zt_or_ztg(fname, fname_g, ...) fname(__VA_ARGS__)
 	#endif
 	
-	#if ENABLE_TEXTURES_PROJECTIVE
+	#if TEXTURE_PERSPECTIVE_MAPPING
 		#define fillRange_zt_or_ztp(...) \
-		if (projective_texture_mapping) \
+		if (projective) \
 		{ \
 			fillRange_zt_or_ztg(fillRange_ztp, fillRange_ztgp, __VA_ARGS__, &w, dwdy, dwdx); \
 		} \
@@ -1067,8 +1172,8 @@ LCDRowRange fillTriangle_zt(
 		z = z2 * (1<<ZSHIFT);
 		u = u2 * ((uvw_int2_t)(1)<<UV_SHIFT);
 		v = v2 * ((uvw_int2_t)(1)<<UV_SHIFT);
-		#if ENABLE_TEXTURES_PROJECTIVE
-		if (projective_texture_mapping)
+		#if TEXTURE_PERSPECTIVE_MAPPING
+		if (projective)
 		{
 			dwdy = UV_SLOPE(w2, p2->y, w3, p3->y, W_SHIFT);
 			w = w2 * ((uvw_int2_t)(1)<<W_SHIFT);
@@ -1097,6 +1202,30 @@ LCDRowRange fillTriangle_zt(
 			#endif
 		);
 	}
+	
+	#if TEXTURE_PERSPECTIVE_MAPPING && TEXTURE_PERSPECTIVE_MAPPING_SPLIT
+	if (do_projective_split)
+	{
+		// we have split this triangle, and drawn only part of it so far.
+		// now draw the rest.
+		
+		fillTriangle_zt(
+			bitmap, rowstride,
+			&p1a, &p2a, &p3a,
+			texture, t1a, t2a, t3a
+			#if ENABLE_CUSTOM_PATTERNS
+			, pattern
+			#endif
+			#if ENABLE_POLYGON_SCANLINING
+			, scanline
+			#endif
+			#if ENABLE_TEXTURES_GREYSCALE
+			, lighting, lighting_weight
+			#endif
+			, 0
+		);
+	}
+	#endif
 		
 	return (LCDRowRange){ MAX(0, p1->y), endy };
 }
@@ -1131,7 +1260,7 @@ LCDRowRange fillQuad_zt(
 	#if ENABLE_TEXTURES_GREYSCALE
 	, float lighting, float lighting_weight
 	#endif
-	#if ENABLE_TEXTURES_PROJECTIVE
+	#if TEXTURE_PERSPECTIVE_MAPPING
 	, int projective
 	#endif
 )
@@ -1148,7 +1277,7 @@ LCDRowRange fillQuad_zt(
 		#if ENABLE_TEXTURES_GREYSCALE
 		, lighting, lighting_weight
 		#endif
-		#if ENABLE_TEXTURES_PROJECTIVE
+		#if TEXTURE_PERSPECTIVE_MAPPING
 		, projective
 		#endif
 	);
@@ -1163,7 +1292,7 @@ LCDRowRange fillQuad_zt(
 		#if ENABLE_TEXTURES_GREYSCALE
 		, lighting, lighting_weight
 		#endif
-		#if ENABLE_TEXTURES_PROJECTIVE
+		#if TEXTURE_PERSPECTIVE_MAPPING
 		, projective
 		#endif
 	);

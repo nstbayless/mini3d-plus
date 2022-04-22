@@ -1130,7 +1130,7 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 					#if ENABLE_TEXTURES_GREYSCALE
 					, v, ft->lighting
 					#endif
-					#if ENABLE_TEXTURES_PROJECTIVE
+					#if TEXTURE_PERSPECTIVE_MAPPING
 					, 1
 					#endif
 				);
@@ -1162,7 +1162,7 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 					#if ENABLE_TEXTURES_GREYSCALE
 					, v, ft->lighting
 					#endif
-					#if ENABLE_TEXTURES_PROJECTIVE
+					#if TEXTURE_PERSPECTIVE_MAPPING
 					, 1
 					#endif
 				);
@@ -1365,7 +1365,7 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 			// TODO: lighting on imposters
 			, 0, 0
 			#endif
-			#if ENABLE_TEXTURES_PROJECTIVE
+			#if TEXTURE_PERSPECTIVE_MAPPING
 			, 0
 			#endif
 			);

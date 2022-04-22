@@ -3,7 +3,7 @@
 // A: alpha / semitransparent / masked textures
 // G: greyscale textures (not strictly black/white) and/or lit textures
 // L: greyscale textures (requires G)
-// P: projective texture mapping
+// P: perspective-correct texture mapping
 
 #define _GLUE(a, b) a##b
 #define GLUE(a, b) _GLUE(a, b)

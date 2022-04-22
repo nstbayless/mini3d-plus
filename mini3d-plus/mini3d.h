@@ -80,11 +80,19 @@
 // 0: always use affine texture mapping
 // 1: always use perspective-correct texture mapping
 // 2: only use affine mapping on polygons whose zmin/zmax > TEXTURE_PROJECTIVE_RATIO_THRESHOLD
-// 3: only use affine mapping on polygons whose zmin/zmax > area * TEXTURE_PROJECTIVE_AREA_FACTOR
+// 3: only use affine mapping on polygons whose zmin/zmax > TEXTURE_PROJECTIVE_AREA_FACTOR / area
+// 4: only use affine mapping on polygons whose zmin/zmax > TEXTURE_PROJECTIVE_LENGTH_FACTOR / manhattan-circumference
 // This is quite expensive. Disable it if at all possible
 // (e.g. if textures are always far from the camera, or always orthogonal to it e.g. imposters)
-#ifndef ENABLE_TEXTURES_PROJECTIVE
-    #define ENABLE_TEXTURES_PROJECTIVE 1
+#ifndef TEXTURE_PERSPECTIVE_MAPPING
+    #define TEXTURE_PERSPECTIVE_MAPPING 4
+#endif
+
+// Ignored if TEXTURE_PERSPECTIVE_MAPPING <= 1
+// Experimental.
+// Allows polygons to be partially rendered affine, partially rendered perspective-correct.
+#ifndef TEXTURE_PERSPECTIVE_MAPPING_SPLIT
+    #define TEXTURE_PERSPECTIVE_MAPPING_SPLIT 0
 #endif
 
 // requires TEXTURE_PERSPECTIVE_MAPPING >= 1
@@ -100,13 +108,19 @@
 // If this value is too low, textures may "jump" slightly as they approach the camera.
 // Comment this definition out entirely to disable this check.
 #ifndef TEXTURE_PROJECTIVE_RATIO_THRESHOLD
-    #define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.85f
+    //#define TEXTURE_PROJECTIVE_RATIO_THRESHOLD 0.85f
 #endif
 
 // only applies if TEXTURE_PERSPECTIVE_MAPPING == 3
 // Increase this value to improve performance at the cost of warped textures
 #ifndef TEXTURE_PROJECTIVE_AREA_FACTOR
-    #define TEXTURE_PROJECTIVE_AREA_FACTOR (1 << 11)
+    #define TEXTURE_PROJECTIVE_AREA_FACTOR (1 << 10)
+#endif
+
+// only applies if TEXTURE_PERSPECTIVE_MAPPING == 4
+// Increase this value to improve performance at the cost of warped textures
+#ifndef TEXTURE_PROJECTIVE_LENGTH_FACTOR
+    #define TEXTURE_PROJECTIVE_LENGTH_FACTOR (1 << 8)
 #endif
 
 // Allows shapes to optionally define a 'scanlining' effect which
