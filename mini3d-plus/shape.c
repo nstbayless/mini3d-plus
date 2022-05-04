@@ -146,6 +146,12 @@ void Shape3D_setClosed(Shape3D* shape, int flag)
 	shape->isClosed = flag;
 }
 
+void Shape3D_setFaceDoubleSided(Shape3D* shape, size_t face_idx, int flag)
+{
+	if (face_idx < shape->nFaces)
+		shape->faces[face_idx].isDoubleSided = flag;
+}
+
 #if ENABLE_TEXTURES
 void Shape3D_setFaceTextureMap(
 	Shape3D* shape, size_t face_idx,

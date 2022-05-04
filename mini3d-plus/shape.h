@@ -21,6 +21,7 @@ typedef struct
 	uint16_t p3;
 	uint16_t p4; // 0xffff if it's a tri
 	float colorBias;
+	int isDoubleSided : 1;
 } Face3D;
 
 #if ENABLE_TEXTURES
@@ -80,6 +81,8 @@ void Shape3D_release(Shape3D* shape);
 size_t Shape3D_addFace(Shape3D* shape, Point3D* a, Point3D* b, Point3D* c, Point3D* d, float colorBias);
 
 void Shape3D_setClosed(Shape3D* shape, int flag);
+
+void Shape3D_setFaceDoubleSided(Shape3D* shape, size_t face_idx, int flag);
 
 #if ENABLE_TEXTURES
 // t4 can be set to anything if not used

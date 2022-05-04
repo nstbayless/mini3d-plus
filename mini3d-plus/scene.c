@@ -188,6 +188,7 @@ Scene3DNode_addShapeWithTransform(Scene3DNode* node, Shape3D* shape, Matrix3D tr
 
 		// also not necessary
 		face->normal = normal(face->p1, face->p2, face->p3);
+		face->isDoubleSided = shape->faces[i].isDoubleSided;
 	}
 	
 	nodeshape->header.transform = transform;
@@ -741,6 +742,7 @@ Scene3D_updateShapeInstance(Scene3D* scene, ShapeInstance* shape, Matrix3D xform
 	{
 		FaceInstance* face = &shape->faces[i];
 		face->normal = normal(face->p1, face->p2, face->p3);
+		face->isDoubleSided = shape->faces[i].isDoubleSided;
 		
 #if ENABLE_ORDERING_TABLE
 		if ( ordersize > 0 )
@@ -1049,7 +1051,7 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 		 (y1 >= VIEWPORT_BOTTOM && y2 >= VIEWPORT_BOTTOM && y3 >= VIEWPORT_BOTTOM && (face->p4 == NULL || face->p4->y >= VIEWPORT_BOTTOM)) )
 		return;
 
-	if ( shape->prototype->isClosed )
+	if ( shape->prototype->isClosed && !face->isDoubleSided )
 	{
 		// only render front side of faces
 

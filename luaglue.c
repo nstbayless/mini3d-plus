@@ -637,6 +637,12 @@ static int shape_setClosed(lua_State* L)
 	return 0;
 }
 
+static int shape_setFaceDoubleSided(lua_State* L)
+{
+	Shape3D_setFaceDoubleSided(getShape(1), pd->lua->getArgInt(2), pd->lua->getArgBool(3));
+	return 0;
+}
+
 static int shape_collideSphere(lua_State* L)
 {
 	Shape3D* shape = getShape(1);
@@ -741,6 +747,7 @@ static const lua_reg lib3DShape[] =
 	{ "addFace",		shape_addFace },
 	{ "setClosed", 		shape_setClosed },
 	{ "collidesSphere", shape_collideSphere },
+	{ "setFaceDoubleSided", shape_setFaceDoubleSided },
 #if ENABLE_TEXTURES
 		{ "setTexture",		shape_setTexture },
 		{ "setFaceTextureMap", shape_setFaceTextureMap},

@@ -30,6 +30,7 @@ struct FaceInstance
 #if ENABLE_ORDERING_TABLE
 	struct FaceInstance* next;
 #endif
+	int isDoubleSided : 1;
 };
 typedef struct FaceInstance FaceInstance;
 
