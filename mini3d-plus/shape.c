@@ -117,6 +117,7 @@ size_t Shape3D_addFace(Shape3D* shape, Point3D* a, Point3D* b, Point3D* c, Point
 	face->p3 = Shape3D_addPoint(shape, c);
 	face->p4 = (d != NULL) ? Shape3D_addPoint(shape, d) : 0xffff;
 	face->colorBias = colorBias;
+	face->isDoubleSided = 0;
 	
 	++shape->nFaces;
 	
