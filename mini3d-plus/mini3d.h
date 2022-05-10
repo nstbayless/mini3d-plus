@@ -9,6 +9,8 @@
 #ifndef mini3d_h
 #define mini3d_h
 
+#include <pd_api.h>
+
 // Generally, you'd only need one of these, as they're two ways of solving the same problem:
 
 // The Z buffer is slower but more accurate, and can handle intersecting geometry.
@@ -213,12 +215,9 @@ typedef Pattern PatternTable[LIGHTING_PATTERN_COUNT];
 // TODO:
 extern PatternTable patterns;
 
-typedef struct PlaydateAPI PlaydateAPI;
-typedef struct LCDBitmap LCDBitmap;
 extern PlaydateAPI* pd;
 
 #ifdef MINI3D_AS_LIBRARY
-typedef PlaydateAPI PlaydateAPI;
 int mini3d_eventHandler(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg);
 #endif
 
