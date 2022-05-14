@@ -61,9 +61,6 @@ Scene3DNode_deinit(Scene3DNode* node)
 		instance = next;
 	}
 	
-	if ( node->instances != NULL )
-		m3d_free(node->instances);
-		
 	int i;
 	
 	for ( i = 0; i < node->nChildren; ++i )
