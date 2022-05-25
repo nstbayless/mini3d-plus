@@ -129,6 +129,7 @@
 // causes even (or odd) rows to look different.
 // This may have a performance benefit.
 // Currently, this is only implemented for textured surfaces.
+// You need to then call shape:
 // (Untextured surfaces can achieve a similar effect with custom dither patterns)
 #ifndef ENABLE_POLYGON_SCANLINING
     #define ENABLE_POLYGON_SCANLINING 1

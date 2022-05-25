@@ -107,6 +107,10 @@ void Shape3D_setTexture(Shape3D* shape, Texture* texture);
 void Shape3D_setPattern(Shape3D* shape, PatternTable* pattern);
 #endif
 
+#if ENABLE_POLYGON_SCANLINING
+void Shape3D_setScanlining(Shape3D* shape, ScanlineFill scanlineFill);
+#endif
+
 #if ENABLE_ORDERING_TABLE
 void Shape3D_setOrderTableSize(Shape3D* shape, int size);
 #endif

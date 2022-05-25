@@ -22,7 +22,7 @@ void Shape3D_init(Shape3D* shape)
 	shape->texmap = NULL;
 #endif
 	#if ENABLE_POLYGON_SCANLINING
-	shape->scanline.select = kScanlineOdd;
+	shape->scanline.select = kScanlineAll;
 	shape->scanline.fill = 0xAAAAAAAA;
 	#endif
 #if ENABLE_CUSTOM_PATTERNS
@@ -211,5 +211,12 @@ void Shape3D_setPattern(Shape3D* shape, PatternTable* pattern)
 void Shape3D_setOrderTableSize(Shape3D* shape, int size)
 {
 	shape->orderTableSize = size;
+}
+#endif
+
+#if ENABLE_POLYGON_SCANLINING
+void Shape3D_setScanlining(Shape3D* shape, ScanlineFill scanlineFill)
+{
+	shape->scanline = scanlineFill;
 }
 #endif

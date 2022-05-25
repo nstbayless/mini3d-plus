@@ -732,6 +732,26 @@ static int shape_setTexture(lua_State* L)
 }
 #endif
 
+#if ENABLE_POLYGON_SCANLINING
+static int shape_setScanlining(lua_State* L)
+{
+	if (pd->lua->getArgCount() != 3) {
+		pd->system->error("Wrong number of arguments to shape:setScanlining; 3 expected");
+	}
+	Shape3D* shape = getShape(1);
+	const char* type = pd->lua->getArgString(2);
+	uint32_t scanfill = pd->lua->getArgInt(3);
+	ScanlineFill fill;
+	fill.fill = scanfill;
+	fill.select = kScanlineOdd;
+	if (!strcmp(type, "all")) fill.select = kScanlineAll;
+	if (!strcmp(type, "even")) fill.select = kScanlineEven;
+	if (!strcmp(type, "odd")) fill.select = kScanlineOdd;
+	Shape3D_setScanlining(shape, fill);
+	return 0;
+}
+#endif
+
 #if ENABLE_ORDERING_TABLE
 static int shape_setOrderTableSize(lua_State* L)
 {
@@ -754,6 +774,9 @@ static const lua_reg lib3DShape[] =
 		#if ENABLE_TEXTURES_GREYSCALE
 			{ "setFaceLighting", shape_setFaceLighting},
 		#endif
+#endif
+#if ENABLE_POLYGON_SCANLINING
+	{ "setScanlining",		shape_setScanlining },
 #endif
 #if ENABLE_CUSTOM_PATTERNS
 	{ "setPattern", shape_setPattern },

@@ -21,6 +21,9 @@ local rad_to_deg = 180 / math.pi
 n = scene:getRootNode()
 n2 = n:addChildNode()
 terrain = lib3d.shape.new()
+if terrain.setScanlining then
+    terrain:setScanlining("even", 0xAAAAAAAA)
+end
 terrain:setClosed(1);
 
 banner = lib3d.shape.new()
@@ -39,6 +42,10 @@ if lib3d.pattern then
             0xF2, 0xF0, 0xF8, 0xF0, 0x2F, 0x0F, 0x8F, 0x0F -- brighter
         )
     )
+end
+
+if lib3d.texture then
+    --banner:setTexture("assets/flag.png.u", true)
 end
     
 local function swap(a, i, j)
@@ -87,6 +94,13 @@ if j then
     for _, face in ipairs(j["banner"]) do
         f_idx = banner:addFace(
             table.unpack(face_vertices(face))
+        )
+        banner:setFaceTextureMap(
+            f_idx,
+            0, 0,
+            1, 0,
+            1, 1,
+            0, 1
         )
     end
 end
