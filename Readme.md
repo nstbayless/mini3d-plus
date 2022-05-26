@@ -75,6 +75,14 @@ include /path/to/mini3d-plus/Makefile
 
 From now on, instead of using `pdc` to compile your project, you must follow the instructions in the [Playdate C guide](https://sdk.play.date/1.9.3/Inside%20Playdate%20with%20C.html). You will likely need to do `make simulator pdc` (use `make device` to build for an actual Playdate instead of the simulator).
 
+## Performance Tips
+
+- Textures are slower than non-textured surfaces.
+- If using textures, consider enabling texture scanlining so that on textured surfaces only odd (or only even) rows are drawn.
+- Carefully look over the macros in mini3d.h. You may want to change some of these.
+- In particular, if using textures, disable TEXTURE_PERSPECTIVE_MAPPING if possible (i.e. if textured objects are not very close to camera.)
+- A significant performance boost can be gained with [Keil ARM compiler](https://developer.arm.com/downloads/-/arm-compiler-for-embedded) (available for free with the [community license](https://www.keil.com/pr/article/1299.htm)) or [armclang](https://developer.arm.com/downloads/-/arm-development-studio-downloads) (30-day free trial license available)
+
 ## Credits
 
 If you use mini3d+, please credit the following.

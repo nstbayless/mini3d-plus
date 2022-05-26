@@ -82,13 +82,14 @@ if j then
             table.unpack(face_vertices(face, 0.2))
         )
         if lib3d.texture then
+            if (f_idx ~= 0) then
             terrain:setFaceTextureMap(
                 f_idx,
                 0, 0,
                 1, 0,
                 1, 1,
                 0, 1
-            )
+            ) end
         end
     end
     for _, face in ipairs(j["banner"]) do
@@ -171,8 +172,8 @@ kart = {
         self.f.x = cos(theta)
         self.f.y = sin(theta)
     end,
-    apply_collision = function(self, normal)
-       self.v -= normal * (normal:dot(self.v) + 0.01)
+    apply_collision = function(self, normal, dist, face_idx)
+        self.v -= normal * (normal:dot(self.v) + 0.001)
     end,
     update = function(self)
         local p = math.exp(-dt)
@@ -185,8 +186,8 @@ kart = {
         end
         
         local collision_occurred = false
-        for i = 1,5 do
-            collision, normal = terrain:collidesSphere(
+        for i = 0,5 do
+            collision, normal, distance, face_idx = terrain:collidesSphere(
                 lib3d.point.new(
                     self.pos.x + self.v.x * dt * VMULT,
                     self.pos.y + self.v.y * dt * VMULT,
@@ -210,8 +211,10 @@ kart = {
                     -- move upward a little
                     self.pos.z -= 0.1
                 else
-                    self:apply_collision(normal)
+                    self:apply_collision(normal, distance, face_idx)
                 end
+            else
+                break
             end
         end
         if not collision_occurred then

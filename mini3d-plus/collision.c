@@ -2,8 +2,10 @@
 #include "mini3d.h"
 
 #if defined(__GNUC__) || defined(__clang__)
+#ifdef TARGET_PLAYDATE
 #pragma GCC optimize ("O3")
 #pragma GCC optimize ("-ffast-math")
+#endif
 #endif
 
 #if !defined(MIN)
@@ -12,6 +14,10 @@
 
 #if !defined(MAX)
 #define MAX(a, b) (((a)>(b))?(a):(b))
+#endif
+
+#if !defined(ABS)
+#define ABS(x) ((x < 0) ? (-x) : x)
 #endif
 
 typedef struct Vector2D
@@ -88,11 +94,17 @@ static float point2D_distance(Point2D a, Point2D b)
     return sqrtf((a.x - b.x)*(a.x - b.x) + (a.y - b.y)*(a.y-b.y));
 }
 
+static float point3D_distance(Point3D a, Point3D b)
+{
+    return sqrtf((a.x - b.x)*(a.x - b.x) + (a.y - b.y)*(a.y-b.y) + (a.z - b.z)*(a.z - b.z));
+}
+
 static int test_circle_line_segment(
     Point2D circle,
     float r,
     Point2D a,
-    Point2D b
+    Point2D b,
+    float* o_distance
 )
 {
     // inverse slope
@@ -113,11 +125,13 @@ static int test_circle_line_segment(
     if (line_displacement < r && line_displacement > -r)
     {
         Vector2D along = point2D_difference(a, b);
+        normalize_vector2D(&along);
         
         // get projection along line
         float line_component = vector2DDot(along, v);
         if (line_component > 0 && line_component < point2D_distance(a, b))
         {
+            if (o_distance) *o_distance = line_displacement;
             return 1;
         }
     }
@@ -174,7 +188,8 @@ int test_sphere_triangle(
     Point3D* p1,
     Point3D* p2,
     Point3D* p3,
-    Vector3D* o_normal
+    Vector3D* o_normal,
+    float* o_distance
 )
 {
     if (Point3D_equal(p1, p2)) return 0;
@@ -210,6 +225,7 @@ int test_sphere_triangle(
                     n.dx *= -1; n.dy *= -1; n.dz *= -1;
                 }
                 memcpy(o_normal, &n, sizeof(Vector3D));
+                if (o_distance) *o_distance = ABS(plane_displacement);
             }
             return 1;
         }
@@ -218,21 +234,25 @@ int test_sphere_triangle(
         r = sqrtf(r*r - plane_displacement*plane_displacement);
         
         // check all three line segments
-        if (test_circle_line_segment(qs, r, q1, q2))
+        float dist2d;
+        if (test_circle_line_segment(qs, r, q1, q2, &dist2d))
         {
             if (o_normal) *o_normal = Vector3D_reverse(Vector3D_normalize(Point3D_line_difference(p1, p2, sphere)));
+            if (o_distance) *o_distance = sqrtf(dist2d * dist2d + plane_displacement*plane_displacement);
             return 1;
         }
         
-        if (test_circle_line_segment(qs, r, q2, q3))
+        if (test_circle_line_segment(qs, r, q2, q3, &dist2d))
         {
             if (o_normal) *o_normal = Vector3D_reverse(Vector3D_normalize(Point3D_line_difference(p2, p3, sphere)));
+            if (o_distance) *o_distance = sqrtf(dist2d * dist2d + plane_displacement*plane_displacement);
             return 1;
         }
         
-        if (test_circle_line_segment(qs, r, q3, q1))
+        if (test_circle_line_segment(qs, r, q3, q1, &dist2d))
         {
             if (o_normal) *o_normal = Vector3D_reverse(Vector3D_normalize(Point3D_line_difference(p3, p1, sphere)));
+            if (o_distance) *o_distance = sqrtf(dist2d * dist2d + plane_displacement*plane_displacement);
             return 1;
         }
         
@@ -240,16 +260,19 @@ int test_sphere_triangle(
         if (test_circle_point(qs, r, q1))
         {
             if (o_normal) *o_normal = Vector3D_reverse(Vector3D_normalize(Point3D_difference(p1, sphere)));
+            if (o_distance) *o_distance = point3D_distance(*p1, *sphere);
             return 1;
         }
         if (test_circle_point(qs, r, q2))
         {
             if (o_normal) *o_normal = Vector3D_reverse(Vector3D_normalize(Point3D_difference(p2, sphere)));
+            if (o_distance) *o_distance = point3D_distance(*p2, *sphere);
             return 1;
         }
         if (test_circle_point(qs, r, q3))
         {
             if (o_normal) *o_normal = Vector3D_reverse(Vector3D_normalize(Point3D_difference(p3, sphere)));
+            if (o_distance) *o_distance = point3D_distance(*p3, *sphere);
             return 1;
         }
     }

@@ -6,5 +6,6 @@ int test_sphere_triangle(
     Point3D* p1,
     Point3D* p2,
     Point3D* p3,
-    Vector3D* o_normal
+    Vector3D* o_normal,
+    float* o_distance
 );

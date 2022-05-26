@@ -649,36 +649,54 @@ static int shape_collideSphere(lua_State* L)
 	Point3D* centre = getPoint(2);
 	float radius = pd->lua->getArgFloat(3);
 	Vector3D o_normal;
+	float dist;
 	
+	float best_collision_distance = radius + 1;
+	Vector3D best_normal;
+	int best_face_idx;
+	int collision_occurred = 0;
 	for (int i = 0; i < shape->nFaces; ++i)
 	{
 		Face3D* face = &shape->faces[i];
 		Point3D* p1 = &shape->points[face->p1];
 		Point3D* p2 = &shape->points[face->p2];
 		Point3D* p3 = &shape->points[face->p3];
-		if (test_sphere_triangle(centre, radius, p1, p2, p3, &o_normal))
+		if (test_sphere_triangle(centre, radius, p1, p2, p3, &o_normal, &dist) && dist < best_collision_distance)
 		{
-			goto collision_detected;
-		} else if (face->p4 != 0xffff)
+			collision_occurred = 1;
+			best_collision_distance = dist;
+			best_face_idx = i;
+			best_normal = o_normal;
+		}
+		
+		if (face->p4 != 0xffff)
 		{
 			Point3D* p4 = &shape->points[face->p4];
-			if (test_sphere_triangle(centre, radius, p1, p3, p4, &o_normal))
+			if (test_sphere_triangle(centre, radius, p1, p3, p4, &o_normal, &dist) && dist < best_collision_distance)
 			{
-				goto collision_detected;
+				collision_occurred = 1;
+				best_collision_distance = dist;
+				best_face_idx = i;
+				best_normal = o_normal;
 			}
 		}
 	}
 	
-	pd->lua->pushBool(0);
-	
-	return 1;
-	
-collision_detected:
-	pd->lua->pushBool(1);
-	Point3D* normal = m3d_malloc(sizeof(Point3D));
-	memcpy(normal, &o_normal, sizeof(Vector3D));
-	pd->lua->pushObject(normal, "lib3d.point", 0);
-	return 2;
+	if (collision_occurred)
+	{
+		pd->lua->pushBool(1);
+		Point3D* normal = m3d_malloc(sizeof(Point3D));
+		memcpy(normal, &best_normal, sizeof(Vector3D));
+		pd->lua->pushObject(normal, "lib3d.point", 0);
+		pd->lua->pushFloat(best_collision_distance);
+		pd->lua->pushInt(best_face_idx);
+		return 4;
+	}
+	else
+	{
+		pd->lua->pushBool(0);
+		return 1;
+	}
 }
 
 #if ENABLE_TEXTURES
@@ -1100,8 +1118,8 @@ static int matrix_newRotation(lua_State* L)
 	Matrix3D* p = m3d_malloc(sizeof(Matrix3D));
 	
 	float angle = pd->lua->getArgFloat(1);
-	float c = cos(angle * M_PI / 180);
-	float s = sin(angle * M_PI / 180);
+	float c = cosf(angle * M_PI / 180);
+	float s = sinf(angle * M_PI / 180);
 	float x = pd->lua->getArgFloat(2);
 	float y = pd->lua->getArgFloat(3);
 	float z = pd->lua->getArgFloat(4);
@@ -1158,7 +1176,7 @@ static int sphere_collide_triangle(lua_State* L)
 	Point3D* p3 = getPoint(5);
 	
 	Vector3D normal;
-	int result = test_sphere_triangle(centre, radius, p1, p2, p3, &normal);
+	int result = test_sphere_triangle(centre, radius, p1, p2, p3, &normal, NULL);
 	pd->lua->pushBool(
 		result
 	);
