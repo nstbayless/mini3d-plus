@@ -77,11 +77,12 @@ From now on, instead of using `pdc` to compile your project, you must follow the
 
 ## Performance Tips
 
+- Do not get your hopes up. Test on the device often. 20 fps is the dream, fam.
 - Textures are slower than non-textured surfaces.
 - If using textures, consider enabling texture scanlining so that on textured surfaces only odd (or only even) rows are drawn.
 - Carefully look over the macros in mini3d.h. You may want to change some of these.
 - In particular, if using textures, disable TEXTURE_PERSPECTIVE_MAPPING if possible (i.e. if textured objects are not very close to camera.)
-- A significant performance boost can be gained with [Keil ARM compiler](https://developer.arm.com/downloads/-/arm-compiler-for-embedded) (available for free with the [community license](https://www.keil.com/pr/article/1299.htm)) or [armclang](https://developer.arm.com/downloads/-/arm-development-studio-downloads) (30-day free trial license available)
+- A significant performance boost can be gained with Keil [armclang](https://developer.arm.com/downloads/-/arm-compiler-for-embedded) (available for free with the [community license](https://www.keil.com/pr/article/1299.htm)), also [here](https://developer.arm.com/downloads/-/arm-development-studio-downloads) (30-day free trial license available). On the kart demo, gcc gives ~17.5 fps, armclang gives ~20fps)
 
 ## Credits
 

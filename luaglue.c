@@ -256,6 +256,15 @@ static int scene_setCameraOrigin(lua_State* L)
 	return 0;
 }
 
+static int scene_getCameraOrigin(lua_State* L)
+{
+	Scene3D* scene = getScene(1);
+	pd->lua->pushFloat(cameraOrigin.x);
+	pd->lua->pushFloat(cameraOrigin.y);
+	pd->lua->pushFloat(cameraOrigin.z);
+	return 3;
+}
+
 static int scene_setCameraTarget(lua_State* L)
 {
 	Scene3D* scene = getScene(1);
@@ -268,6 +277,15 @@ static int scene_setCameraTarget(lua_State* L)
 	return 0;
 }
 
+static int scene_getCameraTarget(lua_State* L)
+{
+	Scene3D* scene = getScene(1);
+	pd->lua->pushFloat(cameraLookat.x);
+	pd->lua->pushFloat(cameraLookat.y);
+	pd->lua->pushFloat(cameraLookat.z);
+	return 3;
+}
+
 static int scene_setCameraScale(lua_State* L)
 {
 	Scene3D* scene = getScene(1);
@@ -276,6 +294,13 @@ static int scene_setCameraScale(lua_State* L)
 	Scene3D_setCamera(scene, cameraOrigin, cameraLookat, cameraScale, cameraUp);
 
 	return 0;
+}
+
+static int scene_getCameraScale(lua_State* L)
+{
+	Scene3D* scene = getScene(1);
+	pd->lua->pushFloat(cameraScale);
+	return 1;
 }
 
 static int scene_setCameraUp(lua_State* L)
@@ -288,6 +313,15 @@ static int scene_setCameraUp(lua_State* L)
 	Scene3D_setCamera(scene, cameraOrigin, cameraLookat, cameraScale, cameraUp);
 	
 	return 0;
+}
+
+static int scene_getCameraUp(lua_State* L)
+{
+	Scene3D* scene = getScene(1);
+	pd->lua->pushFloat(cameraUp.dx);
+	pd->lua->pushFloat(cameraUp.dy);
+	pd->lua->pushFloat(cameraUp.dz);
+	return 3;
 }
 
 static const lua_reg lib3DScene[] =
@@ -306,6 +340,10 @@ static const lua_reg lib3DScene[] =
 	{ "setCameraScale",		scene_setCameraScale },
 	{ "setCameraTarget",	scene_setCameraTarget },
 	{ "setCameraUp",		scene_setCameraUp },
+	{ "getCameraOrigin",	scene_getCameraOrigin },
+	{ "getCameraScale",		scene_getCameraScale },
+	{ "getCameraTarget",	scene_getCameraTarget },
+	{ "getCameraUp",		scene_getCameraUp },
 	{ "prefetchZBuff", _prefetch_zbuf},
 	{ NULL,				NULL }
 };

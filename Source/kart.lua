@@ -112,7 +112,6 @@ n2:addShape(banner)
 
 local KSIZE = 4
 local sink = 0.4
-kartshape = lib3d.imposter.new()
 
 -- load kart textures
 if lib3d.texture then
@@ -124,21 +123,15 @@ if lib3d.texture then
     end
 end
 
-kartshape:setPosition(lib3d.point.new(0, 0, 0))
-kartshape:setRectangle(-KSIZE /2, -KSIZE * (1-sink), KSIZE /2, KSIZE * sink)
-kartshape:setZOffsets(0, 0, -4, -4) -- helps imposter appear above the floor
+
 
 if lib3d.texture then
-    kartshape:setTexture(lib3d.texture.new("assets/kart/img-0.png.u", true))
     terrain:setTexture("assets/texture.png.u", true)
 end
 
-kartNode = n:addChildNode()
-kartNode:addImposter(kartshape)
-
 local gfx = playdate.graphics
 
-kart = {
+function makeKart(is_player) return {
     -- position and size
     pos = lib3d.point.new(),
     r = KSIZE * 0.35,
@@ -159,15 +152,35 @@ kart = {
     
     -- not the *literal* maximum speed.
     TOP_SPEED = 4,
-    
+    kartNode = nil,
+    is_player = is_player,
+    add = function(self)
+        self.kartNode = n:addChildNode()
+        
+        self.kartshape = lib3d.imposter.new()
+        self.kartshape:setPosition(lib3d.point.new(0, 0, 0))
+        self.kartshape:setRectangle(-KSIZE /2, -KSIZE * (1-sink), KSIZE /2, KSIZE * sink)
+        self.kartshape:setZOffsets(0, 0, -4, -4) -- helps imposter appear above the floor
+        if self.kartshape.setTexture then
+            self.kartshape:setTexture(lib3d.texture.new("assets/kart/img-0.png.u", true))
+        end
+        self.kartNode:addImposter(self.kartshape)
+    end,
+    remove = function(self)
+        if self.kartNode then
+            -- TODO: remove
+        end
+    end,
     input = function(self)
         local theta = atan2(self.f.y, self.f.x)
-        local theta_mult = exp(-self.v:length() * 2 / self.TOP_SPEED)
-        if playdate.buttonIsPressed(playdate.kButtonLeft) then
-            theta -= theta_mult * dt
-        end
-        if playdate.buttonIsPressed(playdate.kButtonRight) then
-            theta += theta_mult * dt
+        if is_player then
+            local theta_mult = exp(-self.v:length() / self.TOP_SPEED)
+            if playdate.buttonIsPressed(playdate.kButtonLeft) then
+                theta -= theta_mult * dt
+            end
+            if playdate.buttonIsPressed(playdate.kButtonRight) then
+                theta += theta_mult * dt
+            end
         end
         self.f.x = cos(theta)
         self.f.y = sin(theta)
@@ -176,6 +189,7 @@ kart = {
         self.v -= normal * (normal:dot(self.v) + 0.001)
     end,
     update = function(self)
+        self:input()
         local p = math.exp(-dt)
         local qspeed = min(self.TOP_SPEED, max(0.5, self.f:dot(self.v)) * 1.15)
         self.v.x = self.v.x * p + self.f.x * (1 - p) * qspeed
@@ -186,7 +200,7 @@ kart = {
         end
         
         local collision_occurred = false
-        for i = 0,5 do
+        for i = -1,5 do
             collision, normal, distance, face_idx = terrain:collidesSphere(
                 lib3d.point.new(
                     self.pos.x + self.v.x * dt * VMULT,
@@ -242,6 +256,10 @@ kart = {
             self.f = lib3d.point.new(-1, 0, 0)
             self.v = lib3d.point.new(0.2, 0, -3.5)
         end
+        
+        self.kartNode:setTransform(
+            self:getTransform()
+        )
     end,
     getTransform = function(self)
         local theta = atan2(self.f.y, self.f.x)
@@ -264,15 +282,19 @@ kart = {
             self.pos.z + radius * attack)
         scene:setCameraTarget(self.pos.x, self.pos.y, self.pos.z + 4)
         scene:setCameraUp(0, 0, -1)
-    
+    end,
+    setImage = function(self, scene)
         -- set texture
-        if lib3d.texture then
+        local fv = lib3d.point.new(scene:getCameraTarget()) - lib3d.point.new(scene:getCameraOrigin())
+        if self.kartshape.setTexture then
             local cam_reltheta = atan2(fv.y, fv.x) - atan2(self.f.y, self.f.x)
             local kart_frame = math.floor(-cam_reltheta * KART_ANGLES / 2 / math.pi + 0.5) % KART_ANGLES
-            kartshape:setTexture(kart_texture[kart_frame])
+            self.kartshape:setTexture(kart_texture[kart_frame])
         end
-    end,
+    end
 }
+end
+
 rot = lib3d.matrix.newRotation(1,0,1,0)
 r = 0
 l = 0
@@ -286,17 +308,32 @@ function playdate.AButtonDown()
     end
 end
 
+local kart = makeKart(true)
+kart:add()
+
+local npckarts = {makeKart()}
+
+for i, kart in ipairs(npckarts) do
+    kart.pos.x += i * 2
+    kart:add()
+end
+
 function playdate.update()
     dt = max(0.05, min(0.15, playdate.getElapsedTime()))
     playdate.resetElapsedTime()
-    kart:input()
-    
     kart:update()
-    kartNode:setTransform(
-        kart:getTransform()
-    )
+    for _, npckart in ipairs(npckarts) do
+        npckart:update()
+    end
     
-    kart:setShoulderCamera(scene)
+    if kart.is_player then
+        kart:setShoulderCamera(scene)
+    end
+    
+    kart:setImage(scene)
+    for _, npckart in ipairs(npckarts) do
+        npckart:setImage(scene)
+    end
 	
     scene:prefetchZBuff();
 	if not lib3d.renderer.getInterlaceEnabled then -- [sic]
