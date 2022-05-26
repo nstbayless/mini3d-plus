@@ -241,7 +241,7 @@ static int scene_setCenter(lua_State* L)
 
 static Point3D cameraOrigin = (Point3D){ 0, -1, 1 };
 static Point3D cameraLookat = (Point3D){ 0, 0, 0 };
-static float cameraScale = 1.0;
+static float cameraScale = 1.0f;
 static Vector3D cameraUp = (Vector3D){ 0, 0, 1 };
 
 static int scene_setCameraOrigin(lua_State* L)

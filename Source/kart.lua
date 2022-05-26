@@ -281,7 +281,8 @@ function makeKart(is_player) return {
             self.pos.y - fv.y * radius,
             self.pos.z + radius * attack)
         scene:setCameraTarget(self.pos.x, self.pos.y, self.pos.z + 4)
-        scene:setCameraUp(0, 0, -1)
+        print(sin(self.pos.x / 2))
+        scene:setCameraUp(1, 0, 0)
     end,
     setImage = function(self, scene)
         -- set texture
@@ -311,7 +312,7 @@ end
 local kart = makeKart(true)
 kart:add()
 
-local npckarts = {makeKart()}
+local npckarts = {} --{makeKart()}
 
 for i, kart in ipairs(npckarts) do
     kart.pos.x += i * 2

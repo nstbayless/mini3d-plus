@@ -940,79 +940,52 @@ static void swap(float* a, float* b)
 }
 #endif
 
+// Good reading: https://www.3dgep.com/understanding-the-view-matrix/#Look_At_Camera
+// (Elegant use of the "up" ak "zenith" vector in particular.)
 void
-Scene3D_setCamera(Scene3D* scene, Point3D origin, Point3D lookAt, float scale, Vector3D up)
+Scene3D_setCamera(Scene3D* scene, Point3D origin, Point3D lookAt, float scale, Vector3D zenith)
 {
-	#ifdef Z_IS_UP
-		// swap z and y
-		Matrix3D camera = Matrix3DMake(
-			1, 0, 0,
-			0, 0, 1,
-			0, 1, 0,
-		0);
-		swap(&origin.y, &origin.z);
-		swap(&lookAt.y, &lookAt.z);
-		swap(&up.dy, &up.dz);
-	#else
-		Matrix3D camera = identityMatrix;
-	#endif
-	camera.isIdentity = 0;
-
-	camera.dx = -origin.x;
-	camera.dy = -origin.y;
-	camera.dz = -origin.z;
+	// normalize zenith
+	if (zenith.dx == 0 && zenith.dy == 0 && zenith.dz == 0)
+	{
+		zenith.dz = 1;
+	}
 	
-	Vector3D dir = Vector3DMake(lookAt.x - origin.x, lookAt.y - origin.y, lookAt.z - origin.z);
+	Vector3D dTarget = Point3D_difference(&origin, &lookAt);
+	dTarget = Vector3D_normalize(dTarget);
+	Vector3D dRight = Vector3DCross(dTarget, zenith);
+	dRight = Vector3D_normalize(dRight); // FIXME: what to do if dTarget colinear with zenith?
+	Vector3D dSup = Vector3DCross(dRight, dTarget);// overhead pitch ("Superior")
 	
-	float linv = fisr(Vector3D_lengthSquared(&dir));
+	// mathematically speaking, dSup should already be normal, since it is the cross of two orthonormal vectors.
+	// However, due to rounding errors, it might not quite be, so we could normalize again here.
+	// dSup = Vector3D_normalize(dSup);
 	
-	dir.dx *= linv;
-	dir.dy *= linv;
-	dir.dz *= linv;
+	// note that for orthonormal matrix, transpose is the same as invert.
+	#define TRANSPOSE( m11, m12, m13, m21, m22, m23, m31, m32, m33 ) \
+		m11, m21, m31, \
+		m12, m22, m32, \
+		m13, m23, m33
+		
 	
+	Matrix3D orient = Matrix3DMake(
+		TRANSPOSE(
+			dRight.dx, dSup.dx, dTarget.dx,
+			dRight.dy, dSup.dy, dTarget.dy,
+			dRight.dz, dSup.dz, dTarget.dz
+		),
+		0
+	);
+	
+	Matrix3D translate = Matrix3DMakeTranslate(
+		-origin.x, -origin.y, -origin.z
+	);
+	
+	// XXX corrects a bug in the Matrix3D_multiply function
+	translate.isIdentity = 0;
+	
+	scene->camera = Matrix3D_multiply(translate, orient);
 	scene->scale = VIEWPORT_HEIGHT * scale;
-
-	// first yaw around the y axis
-	
-	float h = 0;
-	
-	if ( dir.dx != 0 || dir.dz != 0 )
-	{
-		linv = fisr(dir.dx * dir.dx + dir.dz * dir.dz);
-		
-		Matrix3D yaw = Matrix3DMake(dir.dz * linv, 0, -dir.dx * linv, 0, 1, 0, dir.dx * linv, 0, dir.dz * linv, 0);
-		camera = Matrix3D_multiply(camera, yaw);
-		
-		h = 1 / linv;
-	}
-	
-	// then pitch up/down to y elevation
-	
-	Matrix3D pitch = Matrix3DMake(1, 0, 0, 0, h, -dir.dy, 0, dir.dy, h, 0);
-	camera = Matrix3D_multiply(camera, pitch);
-	
-	// and roll to position the up vector
-	
-	if ( up.dx != 0 || up.dy != 0 )
-	{
-		linv = fisr(up.dx * up.dx + up.dy * up.dy);
-		Matrix3D roll = Matrix3DMake(up.dy * linv, up.dx * linv, 0, -up.dx * linv, up.dy * linv, 0, 0, 0, 1, 0);
-	
-		scene->camera = Matrix3D_multiply(camera, roll);
-	}
-	else
-		scene->camera = camera;
-	
-	#ifdef Z_IS_UP
-	{
-		Matrix3D _swap = Matrix3DMake(
-			1, 0, 0,
-			0, 0, 1,
-			0, 1, 0,
-		0);
-		camera = Matrix3D_multiply(camera, _swap);
-	}
-	#endif
 	
 	scene->root.needsUpdate = 1;
 }

@@ -80,12 +80,12 @@ static inline float Vector3DDot(Vector3D a, Vector3D b)
 Vector3D Vector3D_normalize(Vector3D v);
 Vector3D normal(Point3D* p1, Point3D* p2, Point3D* p3);
 
-static inline float Vector3D_lengthSquared(Vector3D* v)
+static inline float Vector3D_lengthSquared(const Vector3D* v)
 {
 	return v->dx * v->dx + v->dy * v->dy + v->dz * v->dz;
 }
 
-static inline float Vector3D_length(Vector3D* v)
+static inline float Vector3D_length(const Vector3D* v)
 {
 	return sqrtf(Vector3D_lengthSquared(v));
 }
@@ -95,7 +95,7 @@ static inline Point3D Point3D_addVector(Point3D a, Vector3D v)
 	return Point3DMake(a.x + v.dx, a.y + v.dy, a.z + v.dz);
 }
 
-static inline Vector3D Point3D_difference(Point3D* a, Point3D* b)
+static inline Vector3D Point3D_difference(const Point3D* a, const Point3D* b)
 {
 	return (Vector3D){ .dx = b->x - a->x, .dy = b->y - a->y, .dz = b->z - a->z };
 }
@@ -137,7 +137,10 @@ extern Matrix3D identityMatrix;
 
 Matrix3D Matrix3DMake(float m11, float m12, float m13, float m21, float m22, float m23, float m31, float m32, float m33, int inverting);
 Matrix3D Matrix3DMakeTranslate(float dx, float dy, float dz);
-Matrix3D Matrix3D_multiply(Matrix3D l, Matrix3D r);
+
+// multiplies such that apply(multiply(first, second), p)
+// is equivalent to apply(second, apply(first, p))
+Matrix3D Matrix3D_multiply(Matrix3D first, Matrix3D second);
 Point3D Matrix3D_apply(Matrix3D m, Point3D p);
 
 float Matrix3D_getDeterminant(Matrix3D* m);
