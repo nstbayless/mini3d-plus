@@ -1089,6 +1089,16 @@ static int vec3d_dot(lua_State* L)
 	return 1;
 }
 
+static int vec3d_cross(lua_State* L)
+{
+	Vector3D* p1 = getVector(1);
+	Vector3D* p2 = getVector(2);
+	Vector3D* p = m3d_malloc(sizeof(Point3D));
+	*p = Vector3DCross(*p1, *p2);
+	pd->lua->pushObject(p, "lib3d.point", 0);
+	return 1;
+}
+
 static const lua_reg lib3DPoint[] =
 {
 	{ "new",			point_new },
@@ -1099,6 +1109,7 @@ static const lua_reg lib3DPoint[] =
 	{ "__add",			point_add },
 	{ "__sub",			point_sub },
 	{ "dot",   			vec3d_dot },
+	{ "cross",   		vec3d_cross },
 	{ "length",  		vec3d_length },
 	{ "lengthSquared",  vec3d_length_squared },
 	{ "normalize",  	vec3d_normalize},

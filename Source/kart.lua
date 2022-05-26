@@ -8,6 +8,15 @@ local abs <const> = math.abs
 local dt = 0
 local VMULT <const> = 20.0
 
+local function clamp(x, a, b)
+    if x < a then
+        return a
+    elseif x > b then
+        return b
+    end
+    return x
+end
+
 scene = lib3d.scene.new()
 scene:setCameraOrigin(0, 5, 6)
 scene:setLight(0, 0, 1)
@@ -56,8 +65,8 @@ end
 
 local function face_vertex(face, i)
     return lib3d.point.new(
-        face[i][2],
         face[i][1],
+        face[i][2],
         face[i][3]
     )
 end
@@ -75,6 +84,7 @@ local function face_vertices(face, ...)
 end
 
 -- track
+path = {}
 j = json.decodeFile("assets/track.json")
 if j then
     for _, face in ipairs(j["course"]) do
@@ -104,6 +114,15 @@ if j then
             0, 1
         )
     end
+    for i, e in ipairs(j["path"]) do
+        if e.x1 then
+            path[i] = {
+                p1=lib3d.point.new(e.x1, e.y1, e.z1),
+                p2=lib3d.point.new(e.x2, e.y2, e.e2),
+                next=e.next
+            }
+        end
+    end
 end
 j = nil -- clean up
 
@@ -123,13 +142,45 @@ if lib3d.texture then
     end
 end
 
-
+local function randelt(a)
+    return a[math.random(1, #a)]
+end
 
 if lib3d.texture then
     terrain:setTexture("assets/texture.png.u", true)
 end
 
 local gfx = playdate.graphics
+
+local function distanceToPathNode(p, idx)
+    local node = path[idx] or path[1]
+    local d = (node.p2 - node.p1)
+    local dp = (p - node.p1)
+    d:normalize()
+    return -d:cross(dp).z
+end
+
+local function getPathNodeCentre(idx, t)
+    t = (t or 0.5) + 0.0
+    return path[idx].p1 * t + path[idx].p2 * (1 - t)
+end
+
+local function getPathNodeNormal(idx)
+    local node = path[idx] or path[1]
+    local d = (node.p2 - node.p1)
+    d = d:cross(lib3d.point.new(0, 0, -1))
+    d:normalize()
+    return d
+end
+
+local function angleDifference(a, b)
+    if b - a < -math.pi then
+        return b - a + 2*math.pi
+    elseif b - a >= math.pi then
+        return b - a - 2*math.pi
+    end
+    return b - a
+end
 
 function makeKart(is_player) return {
     -- position and size
@@ -138,7 +189,7 @@ function makeKart(is_player) return {
     rrest = KSIZE * 0.35,
     
     -- facing
-    f = lib3d.point.new(-1, -1, 0),
+    f = lib3d.point.new(-1, 0, 0),
     
     -- velocity
     v = lib3d.point.new(),
@@ -154,6 +205,9 @@ function makeKart(is_player) return {
     TOP_SPEED = 4,
     kartNode = nil,
     is_player = is_player,
+    is_player_control = false,
+    nextPathNode = 1,
+    preferred_t = 0.5,
     add = function(self)
         self.kartNode = n:addChildNode()
         
@@ -173,15 +227,38 @@ function makeKart(is_player) return {
     end,
     input = function(self)
         local theta = atan2(self.f.y, self.f.x)
-        if is_player then
-            local theta_mult = exp(-self.v:length() / self.TOP_SPEED)
+        local theta_mult = exp(-self.v:length() / self.TOP_SPEED)
+        if self.is_player then
+            if playdate.buttonIsPressed(playdate.kButtonLeft) or playdate.buttonIsPressed(playdate.kButtonRight) then
+                self.is_player_control = true
+            end
+        end
+        if self.is_player_control then
+            -- player steers manually
             if playdate.buttonIsPressed(playdate.kButtonLeft) then
                 theta -= theta_mult * dt
             end
             if playdate.buttonIsPressed(playdate.kButtonRight) then
                 theta += theta_mult * dt
             end
+        else
+            -- automatic steering
+            if distanceToPathNode(self.pos, self.nextPathNode) <= 0 then
+                self.nextPathNode = randelt(path[self.nextPathNode].next)
+            end
+            
+            -- destination drift
+            self.preferred_t += (math.random(1) - math.random(1)) * 0.05 * dt
+            self.preferred_t = clamp(self.preferred_t, 0.1, 0.9)
+            
+            desPos = getPathNodeCentre(self.nextPathNode, self.preferred_t) + getPathNodeNormal(self.nextPathNode) * 2.5
+            desF = desPos - self.pos
+            desTheta = atan2(desF.y, desF.x)
+            thetaError = angleDifference(theta, desTheta)
+            theta += clamp(thetaError, -theta_mult * dt, theta_mult * dt)
+            
         end
+        
         self.f.x = cos(theta)
         self.f.y = sin(theta)
     end,
@@ -255,6 +332,7 @@ function makeKart(is_player) return {
             self.cam = lib3d.point.new(-1, 0, 0)
             self.f = lib3d.point.new(-1, 0, 0)
             self.v = lib3d.point.new(0.2, 0, -3.5)
+            self.nextPathNode = 1
         end
         
         self.kartNode:setTransform(
@@ -281,8 +359,7 @@ function makeKart(is_player) return {
             self.pos.y - fv.y * radius,
             self.pos.z + radius * attack)
         scene:setCameraTarget(self.pos.x, self.pos.y, self.pos.z + 4)
-        print(sin(self.pos.x / 2))
-        scene:setCameraUp(1, 0, 0)
+        scene:setCameraUp(0, 0, -1)
     end,
     setImage = function(self, scene)
         -- set texture
@@ -312,10 +389,20 @@ end
 local kart = makeKart(true)
 kart:add()
 
-local npckarts = {} --{makeKart()}
+local npckarts = {}
+
+-- kart logic is very inefficient, so we can't actually afford to run multiple karts
+-- on the device at once. (TODO: OPTIMIZE KARTS!)
+if playdate.simulator then
+    npckarts = {makeKart(), makeKart(), makeKart(), makeKart()}
+end
 
 for i, kart in ipairs(npckarts) do
-    kart.pos.x += i * 2
+    kart.pos.x -= i * 5
+    local offset = sin(i * 1.8)
+    kart.pos.y -= 5 * offset
+    kart.preferred_t = 0.5 + offset / 2.2
+    kart.TOP_SPEED *= (1.0 + 0.3 * cos(i * 2))
     kart:add()
 end
 
