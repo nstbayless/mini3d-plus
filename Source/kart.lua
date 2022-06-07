@@ -359,7 +359,7 @@ function makeKart(is_player) return {
             self.pos.y - fv.y * radius,
             self.pos.z + radius * attack)
         scene:setCameraTarget(self.pos.x, self.pos.y, self.pos.z + 4)
-        scene:setCameraUp(0, 0, -1)
+        scene:setCameraUp(0, 0, 1)
     end,
     setImage = function(self, scene)
         -- set texture

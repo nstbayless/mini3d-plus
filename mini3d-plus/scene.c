@@ -951,6 +951,11 @@ Scene3D_setCamera(Scene3D* scene, Point3D origin, Point3D lookAt, float scale, V
 		zenith.dz = 1;
 	}
 	
+	// flips zenith to account for screen coordinates flipped (y is -)
+	zenith.dx = -zenith.dx;
+	zenith.dy = -zenith.dy;
+	zenith.dz = -zenith.dz;
+	
 	Vector3D dTarget = Point3D_difference(&origin, &lookAt);
 	dTarget = Vector3D_normalize(dTarget);
 	Vector3D dRight = Vector3DCross(dTarget, zenith);
