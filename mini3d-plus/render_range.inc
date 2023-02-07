@@ -3,7 +3,7 @@
 // A: alpha / semitransparent / masked textures
 // G: greyscale textures (not strictly black/white) and/or lit textures
 // L: greyscale textures (requires G)
-// P: perspective-correct texture mapping
+// P: perspective-correct texture mapping (requires T)
 
 #define _GLUE(a, b) a##b
 #define GLUE(a, b) _GLUE(a, b)
@@ -76,8 +76,12 @@ __attribute__ ((hot))
 
 static void
 SYM(drawFragment)(
-	uint32_t* row, zbuf_t* zbrow, int x, int endx
-#ifdef RENDER_Z
+	uint32_t* row
+#ifdef RENDER_Z    
+    , zbuf_t* zbrow
+#endif
+    , int x, int endx
+#if defined(RENDER_Z)
 	, zcoord_t z, zcoord_t dzdx
 #endif
 #ifdef RENDER_T
@@ -170,6 +174,8 @@ SYM(drawFragment)(
                 }
                 #endif
             #endif
+        #elif !defined(RENDER_A)
+            mask |= 0x80000000u >> (x%32);
         #endif
         
 		// read texture
@@ -225,6 +231,11 @@ SYM(drawFragment)(
                     goto skip;
                 }
                 #endif
+            #else
+                if (alpha)
+                {
+                    mask |= 0x80000000u >> (x%32);
+                }
             #endif
         #endif
         
@@ -539,7 +550,7 @@ SYM(fillRange)(
                 #else
                 (!fmt ? drawFragment_tg_OPT_p : drawFragment_tgl_OPT_p)(
                 #endif
-                    (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
+                    (uint32_t*)&bitmap[y*rowstride], (x1>>16), (x2>>16)+1,
                     u, dudx, v, dvdx,
                     bmdata, rowbytes, width, height
                     #if ENABLE_CUSTOM_PATTERNS
@@ -576,7 +587,7 @@ SYM(fillRange)(
                 #else
                 drawFragment_t_OPT_p(
                 #endif
-                    (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
+                    (uint32_t*)&bitmap[y*rowstride], (x1>>16), (x2>>16)+1,
                     u, dudx, v, dvdx,
                     bmdata, rowbytes, width, height
                     #if ENABLE_CUSTOM_PATTERNS

@@ -58,7 +58,7 @@ Texture_getData(Texture* t, int* width, int* height, int* rowbytes, int* hasmask
 {
     if (Texture_isLCDBitmap(t))
     {
-        pd->graphics->getBitmapData(Texture_getLCDBitmap(t), width, height, rowbytes, hasmask, data);
+        pd->graphics->getBitmapData(Texture_getLCDBitmap(t), width, height, rowbytes, (uint8_t**)hasmask, data);
         if (fmt) *fmt = 0;
     }
     else

@@ -378,7 +378,7 @@ r = 0
 l = 0
 t = 0
 
-playdate.display.setRefreshRate(20)
+playdate.display.setRefreshRate(30)
 
 function playdate.AButtonDown()
     if lib3d.renderer.setInterlaceEnabled then

@@ -24,8 +24,11 @@ LCDRowRange drawLine(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, i
 LCDRowRange fillTriangle(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, uint8_t pattern[8]);
 LCDRowRange fillQuad(uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4, uint8_t pattern[8]);
 
+// used for z buffer and for projective texture mapping
+void resetZScale(float zmin);
+
 #if ENABLE_Z_BUFFER
-void resetZBuffer(float zmin);
+void resetZBuffer(void);
 // intended for debugging.
 void render_zbuff(uint8_t* out, int rowstride);
 void prefetch_zbuf(void);
@@ -74,7 +77,47 @@ LCDRowRange fillQuad_zt(
 	, int projective
 	#endif
 );
+#endif
 
+#if ENABLE_TEXTURES
+LCDRowRange fillTriangle_t(
+	uint8_t* bitmap, int rowstride,
+	Point3D* p1, Point3D* p2, Point3D* p3,
+	Texture* texture,
+	Point2D t1, Point2D t2, Point2D t3
+	#if ENABLE_CUSTOM_PATTERNS
+	, PatternTable* pattern
+	#endif
+	#if ENABLE_POLYGON_SCANLINING
+	, ScanlineFill* scanline
+	#endif
+	#if ENABLE_TEXTURES_GREYSCALE
+	// if lighting_weight 0, then ignore light and only use texture
+	// if lighting weight 1, then ignore texture and only use light
+	// (in which case, please call the non-texture version of this function instead!)
+	, float lighting, float lighting_weight
+	#endif
+	#if TEXTURE_PERSPECTIVE_MAPPING
+	, int projective
+	#endif
+);
+
+LCDRowRange fillQuad_t(
+	uint8_t* bitmap, int rowstride, Point3D* p1, Point3D* p2, Point3D* p3, Point3D* p4,
+	Texture* texture, Point2D t1, Point2D t2, Point2D t3, Point2D t4
+	#if ENABLE_CUSTOM_PATTERNS
+	, PatternTable* pattern
+	#endif
+	#if ENABLE_POLYGON_SCANLINING
+	, ScanlineFill* scanline
+	#endif
+	#if ENABLE_TEXTURES_GREYSCALE
+	, float lighting, float lighting_weight
+	#endif
+	#if TEXTURE_PERSPECTIVE_MAPPING
+	, int projective
+	#endif
+);
 #endif
 
 #if ENABLE_INTERLACE

@@ -1118,7 +1118,30 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 		}
 		else
 #endif
+		{
+			#if ENABLE_TEXTURES
+			if ( ft && ft->texture_enabled && shape->prototype->texture )
+			{
+				fillQuad_t(bitmap, rowstride, face->p1, face->p2, face->p3, face->p4,
+					shape->prototype->texture, ft->t1, ft->t2, ft->t3, ft->t4
+					#if ENABLE_CUSTOM_PATTERNS
+					, shape->prototype->pattern
+					#endif
+					#if ENABLE_POLYGON_SCANLINING
+					, &shape->prototype->scanline
+					#endif
+					#if ENABLE_TEXTURES_GREYSCALE
+					, v, ft->lighting
+					#endif
+					#if TEXTURE_PERSPECTIVE_MAPPING
+					, 1
+					#endif
+				);
+			}
+			else
+			#endif
 			fillQuad(bitmap, rowstride, face->p1, face->p2, face->p3, face->p4, pattern);
+		}
 	}
 	else
 	{
@@ -1150,7 +1173,30 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 		}
 		else
 #endif
+		{
+			#if ENABLE_TEXTURES
+			if ( ft && ft->texture_enabled && shape->prototype->texture )
+			{
+				fillTriangle_t(bitmap, rowstride, face->p1, face->p2, face->p3,
+					shape->prototype->texture, ft->t1, ft->t2, ft->t3
+					#if ENABLE_CUSTOM_PATTERNS
+					, shape->prototype->pattern
+					#endif
+					#if ENABLE_POLYGON_SCANLINING
+					, &shape->prototype->scanline
+					#endif
+					#if ENABLE_TEXTURES_GREYSCALE
+					, v, ft->lighting
+					#endif
+					#if TEXTURE_PERSPECTIVE_MAPPING
+					, 1
+					#endif
+				);
+			}
+			else
+			#endif
 			fillTriangle(bitmap, rowstride, face->p1, face->p2, face->p3, pattern);
+		}
 	}
 }
 
@@ -1353,6 +1399,26 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 	else
 	#endif
 	{
+		
+		#if ENABLE_TEXTURES
+		if (imposter->prototype->bitmap)
+			fillQuad_t(bitmap, rowstride, &tl, &tr, &br, &bl, imposter->prototype->bitmap, t1, t2, t3, t4
+			#if ENABLE_CUSTOM_PATTERNS
+			, patterns
+			#endif
+			#if ENABLE_POLYGON_SCANLINING
+			, &imposter->prototype->scanline
+			#endif
+			#if ENABLE_TEXTURES_GREYSCALE
+			// TODO: lighting on imposters
+			, 0, 0
+			#endif
+			#if TEXTURE_PERSPECTIVE_MAPPING
+			, 0
+			#endif
+			);
+		else
+		#endif
 		fillQuad(bitmap, rowstride, &tl, &tr, &br, &bl, pattern);
 	}
 }
@@ -1414,8 +1480,9 @@ Scene3D_draw(Scene3D* scene, uint8_t* bitmap, int rowstride)
 	Scene3D_updateNode(scene, &scene->root, scene->camera, 0, kRenderFilled, 0);
 	
 #if ENABLE_Z_BUFFER
-	resetZBuffer(CLIP_EPSILON);
+	resetZBuffer();
 #endif
+	resetZScale(CLIP_EPSILON);
 	
 	Scene3D_drawNode(scene, &scene->root, bitmap, rowstride);
 }
