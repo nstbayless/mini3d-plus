@@ -87,7 +87,10 @@ SYM(drawFragment)(
 #ifdef RENDER_T
 	, uvw_int2_t u, uvw_int2_t dudx,
 	uvw_int2_t v, uvw_int2_t dvdx,
-	uint8_t* texdata, OPTU32(uint16_t) texrowbytes, OPTU32(uint16_t) texw, OPTU32(uint16_t) texh
+	uint8_t* texdata, OPTU32(uint16_t) texrowbytes, OPTU32(uint16_t) texw
+    #if !TEXTURES_ALWAYS_SQUARE
+    , OPTU32(uint16_t) texh
+    #endif
     #if ENABLE_CUSTOM_PATTERNS
     , PatternTable* pattern
     #endif
@@ -105,6 +108,9 @@ SYM(drawFragment)(
 #endif
 )
 {
+    #if TEXTURES_ALWAYS_SQUARE
+    #define texh texw
+    #endif
 	if ( endx < VIEWPORT_LEFT || x >= VIEWPORT_RIGHT )
 		return;
         
@@ -131,16 +137,18 @@ SYM(drawFragment)(
 	uint32_t mask = 0;
 	uint32_t* p = row + x/32;
     #ifdef RENDER_T
-	uint32_t color = 0;
+	    uint32_t color = 0;
     #endif
     #if defined(RENDER_A) && !defined(RENDER_L)
-    uint8_t* maskdata = texdata + (texh * texrowbytes);
+        uint8_t* maskdata = texdata + (texh * texrowbytes);
     #endif
     
     #if defined(RENDER_T) && TEXTURES_ALWAYS_POWER_OF_2
     // allows quicker modulo later.
     texw--;
-    texh--;
+        #if !TEXTURES_ALWAYS_SQUARE
+        texh--;
+        #endif
     #endif
 
 	while ( (unsigned)x < (unsigned)endx )
@@ -200,8 +208,9 @@ SYM(drawFragment)(
                 ui &= texw;
                 vi &= texh;
             #else
-                ui %= texw; // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
-                vi %= texh; // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
+                // OPTIMIZE: try other operations here. (This is just paranoid bounds anyway.)
+                ui %= texw;
+                vi %= texw;
             #endif
             #ifdef RENDER_L
             OPTU32(uint16_t) ti = (vi * texrowbytes) + ui;
@@ -466,7 +475,10 @@ SYM(fillRange)(
                             (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
                             z, dzdx,
                             u, dudx, v, dvdx,
-                            bmdata, rowbytes, width, height
+                            bmdata, rowbytes, width
+                            #if !TEXTURES_ALWAYS_SQUARE
+                            , height
+                            #endif
                             #if ENABLE_CUSTOM_PATTERNS
                             , pattern
                             #endif
@@ -485,7 +497,10 @@ SYM(fillRange)(
                             (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
                             z, dzdx,
                             u, dudx, v, dvdx,
-                            bmdata, rowbytes, width, height
+                            bmdata, rowbytes, width
+                            #if !TEXTURES_ALWAYS_SQUARE
+                            , height
+                            #endif
                             #if ENABLE_CUSTOM_PATTERNS
                             , pattern
                             #endif
@@ -508,7 +523,10 @@ SYM(fillRange)(
                             (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
                             z, dzdx,
                             u, dudx, v, dvdx,
-                            bmdata, rowbytes, width, height
+                            bmdata, rowbytes, width
+                            #if !TEXTURES_ALWAYS_SQUARE
+                            , height
+                            #endif
                             #if ENABLE_CUSTOM_PATTERNS
                             , pattern
                             #endif
@@ -527,7 +545,10 @@ SYM(fillRange)(
                             (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
                             z, dzdx,
                             u, dudx, v, dvdx,
-                            bmdata, rowbytes, width, height
+                            bmdata, rowbytes, width
+                            #if !TEXTURES_ALWAYS_SQUARE
+                            , height
+                            #endif
                             #if ENABLE_CUSTOM_PATTERNS
                             , pattern
                             #endif
@@ -552,7 +573,10 @@ SYM(fillRange)(
                 #endif
                     (uint32_t*)&bitmap[y*rowstride], (x1>>16), (x2>>16)+1,
                     u, dudx, v, dvdx,
-                    bmdata, rowbytes, width, height
+                    bmdata, rowbytes, width
+                    #if !TEXTURES_ALWAYS_SQUARE
+                    , height
+                    #endif
                     #if ENABLE_CUSTOM_PATTERNS
                     , pattern
                     #endif
@@ -573,7 +597,10 @@ SYM(fillRange)(
                     (uint32_t*)&bitmap[y*rowstride], ZBUF_IDX(0, y), (x1>>16), (x2>>16)+1,
                     z, dzdx,
                     u, dudx, v, dvdx,
-                    bmdata, rowbytes, width, height
+                    bmdata, rowbytes, width
+                    #if !TEXTURES_ALWAYS_SQUARE
+                    , height
+                    #endif
                     #if ENABLE_CUSTOM_PATTERNS
                     , pattern
                     #endif
@@ -589,7 +616,10 @@ SYM(fillRange)(
                 #endif
                     (uint32_t*)&bitmap[y*rowstride], (x1>>16), (x2>>16)+1,
                     u, dudx, v, dvdx,
-                    bmdata, rowbytes, width, height
+                    bmdata, rowbytes, width
+                    #if !TEXTURES_ALWAYS_SQUARE
+                    , height
+                    #endif
                     #if ENABLE_CUSTOM_PATTERNS
                     , pattern
                     #endif

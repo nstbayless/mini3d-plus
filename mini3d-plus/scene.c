@@ -1615,8 +1615,9 @@ static void Scene3D_drawSortedFaces(Scene3D* scene, uint8_t* bitmap, int rowstri
 		QSORT(scene->sortedfacelistc, LESS, SWAP);
 		#undef LESS
 		#undef SWAP
-		pd->system->logToConsole("Faces sorted: %d\n", scene->sortedfacelistc);
+		
 		#if 0
+		pd->system->logToConsole("Faces sorted: %d\n", scene->sortedfacelistc);
 		for (int i = 0; i < scene->sortedfacelistc; ++i)
 		{
 			SortedFace* sf = &scene->sortedfacelist[i];

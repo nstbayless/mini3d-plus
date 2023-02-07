@@ -114,6 +114,13 @@
     #define TEXTURES_ALWAYS_POWER_OF_2 1
 #endif
 
+// if this is true, then texture dimensions must always be square.
+// However, this enables a performance improvement.
+// Undefined behaviour occurs if the texture is not square
+#ifndef TEXTURES_ALWAYS_SQUARE
+    #define TEXTURES_ALWAYS_SQUARE 1
+#endif
+
 // Ignored if textures are disabled.
 // Can take multiple values:
 // 0: always use affine texture mapping
