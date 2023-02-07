@@ -13,8 +13,28 @@
 #include "scene.h"
 #include "shape.h"
 #include "render.h"
+#include "qsort.h"
 
 #include <pd_api.h>
+
+static inline int face_clips_epsilon(FaceInstance* face)
+{
+	return (face->p1->z < CLIP_EPSILON || face->p2->z < CLIP_EPSILON || face->p3->z < CLIP_EPSILON || (face->p4 && face->p4->z < CLIP_EPSILON));
+}
+
+#if SORT_3D_FACES_BY_Z
+static void Scene3D_add_face_to_sortlist(Scene3D* scene, SortedFace sface)
+{
+	int idx = scene->sortedfacelistc++;
+	if (idx >= scene->sortedfacelistsize)
+	{
+		#define FACELIST_INCREMENT 0x50
+		scene->sortedfacelistsize += FACELIST_INCREMENT;
+		scene->sortedfacelist = m3d_realloc(scene->sortedfacelist, scene->sortedfacelistsize * sizeof(SortedFace));
+	}
+	scene->sortedfacelist[idx] = sface;
+}
+#endif
 
 void
 Scene3DNode_init(Scene3DNode* node)
@@ -61,9 +81,7 @@ Scene3DNode_deinit(Scene3DNode* node)
 		instance = next;
 	}
 	
-	int i;
-	
-	for ( i = 0; i < node->nChildren; ++i )
+	for ( int i = 0; i < node->nChildren; ++i )
 	{
 		Scene3DNode_deinit(node->childNodes[i]);
 		m3d_free(node->childNodes[i]);
@@ -722,7 +740,7 @@ Scene3D_updateShapeInstance(Scene3D* scene, ShapeInstance* shape, Matrix3D xform
 #if ENABLE_ORDERING_TABLE
 	float zmin = 1e23;
 	float zmax = 0;
-	int ordersize = shape->prototype->orderTableSize;
+	size_t ordersize = shape->prototype->orderTableSize;
 	
 	if ( ordersize != shape->orderTableSize )
 	{
@@ -781,10 +799,51 @@ Scene3D_updateShapeInstance(Scene3D* scene, ShapeInstance* shape, Matrix3D xform
 		{
 			FaceInstance* face = &shape->faces[i];
 			
-			int idx = ordersize * (face->p1->z + face->p2->z + face->p3->z - zmin) / d;
+			// note the conversion float -> size_t
+			size_t idx = (size_t)(ordersize * (face->p1->z + face->p2->z + face->p3->z - zmin) / d);
+			
 			face->next = shape->orderTable[idx];
 			shape->orderTable[idx] = face;
 		}
+	}
+#endif
+
+#if SORT_3D_FACES_BY_Z
+	// add non-clipped faces to the face sort list.
+	for ( int i = 0; i < shape->nFaces; ++i )
+	{
+		FaceInstance* face = &shape->faces[i];
+		// skip if face goes behind the camera at all.
+		if (face_clips_epsilon(face))
+		{
+			continue;
+		}
+		
+		float zcomp = MAX(MAX(face->p1->z, face->p2->z), face->p3->z);
+		if (face->p4) zcomp = MAX(zcomp, face->p4->z);
+		
+		// add this face to the list.
+		SortedFace sf = {
+			.comparison = zcomp,
+			.instance = &shape->header,
+			.face = (uint32_t)i
+		};
+		Scene3D_add_face_to_sortlist(scene, sf);
+	}
+	
+	// add clipped faces to the face sort list
+	for (int i = 0; i < shape->nClip; ++i)
+	{
+		ClippedFace3D* face = &shape->clip[i];
+		float zcomp = MAX(MAX(face->p2.z, face->p3.z), face->p4.z);
+		if (face->p1) zcomp = MAX(zcomp, face->p1->z);
+		
+		SortedFace sf = {
+			.comparison = zcomp,
+			.instance = &shape->header,
+			.face = 0x80000000 | (uint32_t)i
+		};
+		Scene3D_add_face_to_sortlist(scene, sf);
 	}
 #endif
 }
@@ -794,6 +853,17 @@ Scene3D_updateImposterInstance(Scene3D* scene, ImposterInstance* imposter, Matri
 {
 	Imposter3D* proto = imposter->prototype;
 	imposter->header.center = Matrix3D_apply(xform, Matrix3D_apply(imposter->header.transform, proto->center));
+	
+	if (imposter->header.center.z < CLIP_EPSILON) return;
+	
+	#if SORT_3D_FACES_BY_Z
+	SortedFace sf = {
+		.comparison = imposter->header.center.z,
+		.instance = &imposter->header,
+	};
+	Scene3D_add_face_to_sortlist(scene, sf);
+	#endif
+	
 	imposter->tl = imposter->header.center;
 	imposter->br = imposter->header.center;
 	imposter->tl.x += proto->x1;
@@ -864,15 +934,29 @@ Scene3D_init(Scene3D* scene)
 
 	Scene3DNode_init(&scene->root);
 	
+	#if SORT_3D_INSTANCES_BY_Z
 	scene->instancelist = NULL;
 	scene->instancelistsize = 0;
+	#endif
+	
+	#if SORT_3D_FACES_BY_Z
+	scene->sortedfacelist = NULL;
+	scene->sortedfacelistc = scene->sortedfacelistsize = 0;
+	#endif
 }
 
 void
 Scene3D_deinit(Scene3D* scene)
 {
+	#if SORT_3D_INSTANCES_BY_Z
 	if ( scene->instancelist != NULL )
 		m3d_free(scene->instancelist);
+	#endif
+	
+	#if SORT_3D_FACES_BY_Z
+	if ( scene->sortedfacelist != NULL )
+		m3d_free(scene->sortedfacelist);
+	#endif
 	
 	Scene3DNode_deinit(&scene->root);
 }
@@ -896,6 +980,7 @@ Scene3D_getRootNode(Scene3D* scene)
 	return &scene->root;
 }
 
+#if SORT_3D_INSTANCES_BY_Z
 static int
 getInstancesAtNode(Scene3D* scene, Scene3DNode* node, int count)
 {
@@ -921,13 +1006,12 @@ getInstancesAtNode(Scene3D* scene, Scene3DNode* node, int count)
 		instance = instance->next;
 	}
 	
-	int i;
-	
-	for ( i = 0; i < node->nChildren; ++i )
+	for ( int i = 0; i < node->nChildren; ++i )
 		count = getInstancesAtNode(scene, node->childNodes[i], count);
 
 	return count;
 }
+#endif
 
 #define Z_IS_UP
 
@@ -995,8 +1079,9 @@ Scene3D_setCamera(Scene3D* scene, Point3D origin, Point3D lookAt, float scale, V
 	scene->root.needsUpdate = 1;
 }
 
-static inline void
-drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride, FaceInstance* face
+// assumption: caller has already verified that no vertex falls below CLIP_EPSILON in z.
+static FORCEINLINE inline void
+drawShapeFace(Scene3D* scene, ShapeInstance* shape, FaceInstance* face, uint8_t* bitmap, int rowstride
 	#if ENABLE_TEXTURES
 	, FaceTexture* ft
 	#else
@@ -1004,13 +1089,6 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 	#endif
 )
 {
-	// If any vertex is behind the camera, skip the whole face
-	// TODO: consider caching the 'cull' computation.
-	// (we will render it elsewhere when we render clipped polygons )
-	if ( face->p1->z < CLIP_EPSILON || face->p2->z < CLIP_EPSILON || face->p3->z < CLIP_EPSILON
-		|| (face->p4 && face->p4->z < CLIP_EPSILON))
-			return;
-	
 	float x1 = face->p1->x;
 	float y1 = face->p1->y;
 	float x2 = face->p2->x;
@@ -1200,19 +1278,43 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 	}
 }
 
+#if FACE_CLIPPING
+static inline void drawClippedFace(Scene3D* scene, ShapeInstance* shape, ClippedFace3D* clip, uint8_t* bitmap, int rowstride)
+{
+	// create a fictitious face instance for each clipped face, and render that.
+	FaceInstance f;
+	memcpy(&f, clip->src, sizeof(FaceInstance));
+	f.p1 = &clip->p2;
+	f.p2 = &clip->p3;
+	f.p3 = &clip->p4;
+	f.p4 = clip->p1;
+	
+	drawShapeFace(scene, shape, &f, bitmap, rowstride,
+	#if ENABLE_TEXTURES
+		&clip->tex
+	#else
+		NULL
+	#endif
+	);
+}
+#endif
+
 static inline void
 drawFilledShape(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride)
 {
 #if ENABLE_ORDERING_TABLE
 	if ( shape->orderTableSize > 0 )
 	{
-		for ( int i = shape->orderTableSize - 1; i >= 0; --i )
+		for ( size_t i = shape->orderTableSize; i --> 0; )
 		{
 			FaceInstance* face = shape->orderTable[i];
 			
 			while ( face != NULL )
 			{
-				drawShapeFace(scene, shape, bitmap, rowstride, face, NULL);
+				if (!face_clips_epsilon(face))
+				{
+					drawShapeFace(scene, shape, face, bitmap, rowstride, NULL);
+				}
 				face = face->next;
 			}
 		}
@@ -1220,7 +1322,12 @@ drawFilledShape(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowst
 	else
 #endif
 	for ( int f = 0; f < shape->nFaces; ++f )
-		drawShapeFace(scene, shape, bitmap, rowstride, &shape->faces[f], NULL);
+	{
+		if (!face_clips_epsilon(&shape->faces[f]))
+		{
+			drawShapeFace(scene, shape, &shape->faces[f], bitmap, rowstride, NULL);
+		}
+	}
 		
 	// XXX (ORDERING_TABLE only)
 	// NOTE (ORDERING_TABLE): we are incorrectly assuming that culled faces are ALWAYS closest to the camera.
@@ -1230,33 +1337,91 @@ drawFilledShape(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowst
 	{
 		ClippedFace3D* clip = &shape->clip[i];
 		
-		// create a fictitious face instance for each clipped face, and render that.
-		FaceInstance f;
-		memcpy(&f, clip->src, sizeof(FaceInstance));
-		f.p1 = &clip->p2;
-		f.p2 = &clip->p3;
-		f.p3 = &clip->p4;
-		f.p4 = clip->p1;
-		
-		drawShapeFace(scene, shape, bitmap, rowstride, &f,
-		#if ENABLE_TEXTURES
-			&clip->tex
-		#else
-			NULL
-		#endif
-		);
+		drawClippedFace(scene, shape, clip, bitmap, rowstride);
 	}
 	#endif
+}
+
+// assumption: callee has already ensured that no vertices of this face are behind the camera.
+static FORCEINLINE inline void
+drawWireframeFace(Scene3D* scene, ShapeInstance* shape, FaceInstance* face, uint8_t* bitmap, int rowstride)
+{
+	RenderStyle style = shape->renderStyle;
+	uint8_t* color = patterns[32];
+	
+	float x1 = face->p1->x;
+	float y1 = face->p1->y;
+	float x2 = face->p2->x;
+	float y2 = face->p2->y;
+	float x3 = face->p3->x;
+	float y3 = face->p3->y;
+	float x4 = (face->p4 != NULL) ? face->p4->x : 0;
+	float y4 = (face->p4 != NULL) ? face->p4->y : 0;
+
+	// quick bounds check
+	
+	if ( (x1 < VIEWPORT_LEFT && x2 < VIEWPORT_LEFT && x3 < VIEWPORT_LEFT && x4 < VIEWPORT_LEFT)
+		|| (x1 >= VIEWPORT_RIGHT && x2 >= VIEWPORT_RIGHT && x3 >= VIEWPORT_RIGHT && x4 >= VIEWPORT_RIGHT)
+		|| (y1 < VIEWPORT_TOP && y2 < VIEWPORT_TOP && y3 < VIEWPORT_TOP && y4 < VIEWPORT_TOP)
+		|| (y1 >= VIEWPORT_BOTTOM && y2 >= VIEWPORT_BOTTOM && y3 >= VIEWPORT_BOTTOM && y4 >= VIEWPORT_BOTTOM) )
+		return;
+
+	if ( (style & kRenderWireframeBack) == 0 )
+	{
+		// only render front side of faces
+
+		float d;
+		
+		if ( scene->hasPerspective ) // use winding order
+			d = (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1);
+		else // use direction of normal
+			d = face->normal.dz;
+		
+		if ( (d > 0) ^ (shape->inverted ? 1 : 0) )
+			return;
+	}
+
+	// XXX - can avoid 1/2 the drawing if we're doing the entire shape (kRenderWireframeBack is set)
+	// and the shape is closed: skip lines where y1 > y2
+	
+	// TODO: render clipped lines also.
+		
+#if ENABLE_Z_BUFFER
+	if ( shape->header.useZBuffer )
+	{
+		drawLine_zbuf(bitmap, rowstride, face->p1, face->p2, 1, color);
+		drawLine_zbuf(bitmap, rowstride, face->p2, face->p3, 1, color);
+
+		if ( face->p4 != NULL )
+		{
+			drawLine_zbuf(bitmap, rowstride, face->p3, face->p4, 1, color);
+			drawLine_zbuf(bitmap, rowstride, face->p4, face->p1, 1, color);
+		}
+		else
+			drawLine_zbuf(bitmap, rowstride, face->p3, face->p1, 1, color);
+	}
+	else
+	{
+#endif
+		drawLine(bitmap, rowstride, face->p1, face->p2, 1, color);
+		drawLine(bitmap, rowstride, face->p2, face->p3, 1, color);
+		
+		if ( face->p4 != NULL )
+		{
+			drawLine(bitmap, rowstride, face->p3, face->p4, 1, color);
+			drawLine(bitmap, rowstride, face->p4, face->p1, 1, color);
+		}
+		else
+			drawLine(bitmap, rowstride, face->p3, face->p1, 1, color);
+#if ENABLE_Z_BUFFER
+	}
+#endif
 }
 
 static inline void
 drawWireframe(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride)
 {
-	int f;
-	RenderStyle style = shape->renderStyle;
-	uint8_t* color = patterns[32];
-
-	for ( f = 0; f < shape->nFaces; ++f )
+	for ( int f = 0; f < shape->nFaces; ++f )
 	{
 		FaceInstance* face = &shape->faces[f];
 		
@@ -1265,73 +1430,7 @@ drawWireframe(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 		if ( face->p1->z <= 0 || face->p2->z <= 0 || face->p3->z <= 0 || (face->p4 != NULL && face->p4->x <= 0) )
 			continue;
 		
-		float x1 = face->p1->x;
-		float y1 = face->p1->y;
-		float x2 = face->p2->x;
-		float y2 = face->p2->y;
-		float x3 = face->p3->x;
-		float y3 = face->p3->y;
-		float x4 = (face->p4 != NULL) ? face->p4->x : 0;
-		float y4 = (face->p4 != NULL) ? face->p4->y : 0;
-
-		// quick bounds check
-		
-		if ( (x1 < VIEWPORT_LEFT && x2 < VIEWPORT_LEFT && x3 < VIEWPORT_LEFT && x4 < VIEWPORT_LEFT)
-			|| (x1 >= VIEWPORT_RIGHT && x2 >= VIEWPORT_RIGHT && x3 >= VIEWPORT_RIGHT && x4 >= VIEWPORT_RIGHT)
-			|| (y1 < VIEWPORT_TOP && y2 < VIEWPORT_TOP && y3 < VIEWPORT_TOP && y4 < VIEWPORT_TOP)
-			|| (y1 >= VIEWPORT_BOTTOM && y2 >= VIEWPORT_BOTTOM && y3 >= VIEWPORT_BOTTOM && y4 >= VIEWPORT_BOTTOM) )
-			continue;
-
-		if ( (style & kRenderWireframeBack) == 0 )
-		{
-			// only render front side of faces
-
-			float d;
-			
-			if ( scene->hasPerspective ) // use winding order
-				d = (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1);
-			else // use direction of normal
-				d = face->normal.dz;
-			
-			if ( (d > 0) ^ (shape->inverted ? 1 : 0) )
-				continue;
-		}
-
-		// XXX - can avoid 1/2 the drawing if we're doing the entire shape (kRenderWireframeBack is set)
-		// and the shape is closed: skip lines where y1 > y2
-		
-		// TODO: render clipped lines also.
-		
-#if ENABLE_Z_BUFFER
-		if ( shape->header.useZBuffer )
-		{
-			drawLine_zbuf(bitmap, rowstride, face->p1, face->p2, 1, color);
-			drawLine_zbuf(bitmap, rowstride, face->p2, face->p3, 1, color);
-
-			if ( face->p4 != NULL )
-			{
-				drawLine_zbuf(bitmap, rowstride, face->p3, face->p4, 1, color);
-				drawLine_zbuf(bitmap, rowstride, face->p4, face->p1, 1, color);
-			}
-			else
-				drawLine_zbuf(bitmap, rowstride, face->p3, face->p1, 1, color);
-		}
-		else
-		{
-#endif
-			drawLine(bitmap, rowstride, face->p1, face->p2, 1, color);
-			drawLine(bitmap, rowstride, face->p2, face->p3, 1, color);
-			
-			if ( face->p4 != NULL )
-			{
-				drawLine(bitmap, rowstride, face->p3, face->p4, 1, color);
-				drawLine(bitmap, rowstride, face->p4, face->p1, 1, color);
-			}
-			else
-				drawLine(bitmap, rowstride, face->p3, face->p1, 1, color);
-#if ENABLE_Z_BUFFER
-		}
-#endif
+		drawWireframeFace(scene, shape, face, bitmap, rowstride);
 	}
 }
 
@@ -1346,7 +1445,7 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 	#endif
 	[25];
 	
-	if (imposter->header.center.z <= CLIP_EPSILON / 2)
+	if (imposter->header.center.z < CLIP_EPSILON)
 	{
 		return;
 	}
@@ -1423,6 +1522,29 @@ drawImposter(Scene3D* scene, ImposterInstance* imposter, uint8_t* bitmap, int ro
 	}
 }
 
+static void drawInstance(Scene3D* scene, InstanceHeader* instance, uint8_t* bitmap, int rowstride)
+{
+	switch (instance->type)
+	{
+	case kInstanceTypeShape: {
+			ShapeInstance* shape = (ShapeInstance*)instance;
+			RenderStyle style = shape->renderStyle;
+			
+			if ( style & kRenderFilled )
+				drawFilledShape(scene, shape, bitmap, rowstride);
+			
+			if ( style & kRenderWireframe )
+				drawWireframe(scene, shape, bitmap, rowstride);
+		}
+		break;
+	case kInstanceTypeImposter: {
+			ImposterInstance* imposter = (ImposterInstance*)instance;
+			drawImposter(scene, imposter, bitmap, rowstride);
+		}
+		break;
+	}
+}
+
 static int compareZ(const void* a, const void* b)
 {
 	InstanceHeader* shapea = *(InstanceHeader**)a;
@@ -1434,41 +1556,112 @@ static int compareZ(const void* a, const void* b)
 void
 Scene3D_drawNode(Scene3D* scene, Scene3DNode* node, uint8_t* bitmap, int rowstride)
 {
+	#if SORT_3D_INSTANCES_BY_Z
+	// recursively get all descendent instances of this node.
 	// order shapes by z
-	
 	int count = getInstancesAtNode(scene, node, 0);
 	
 	// and draw back to front
-	
 	if ( count > 1 )
-		qsort(scene->instancelist, count, sizeof(InstanceHeader*), compareZ);
-	
-	int i;
-	
-	for ( i = 0; i < count; ++i )
 	{
-		InstanceHeader* instance = scene->instancelist[i];
-		switch (instance->type)
+		InstanceHeader* tmp;
+		
+		#define LESS(a, b) scene->instancelist[a]->center.z < scene->instancelist[b]->center.z
+		#define SWAP(a, b) tmp = scene->instancelist[a], scene->instancelist[a] = scene->instancelist[b], scene->instancelist[b] = tmp
+		
+		QSORT(count, LESS, SWAP);
+		
+		#undef LESS
+		#undef SWAP
+	}
+	
+	for ( int i = 0; i < count; ++i )
+	{
+		drawInstance(scene, scene->instancelist[i], bitmap, rowstride);
+	}
+	#else
+	// we don't really care about the draw order now.
+	
+	// draw children nodes recursively
+	for ( int i = 0; i < node->nChildren; ++i )
+	{
+		Scene3D_drawNode(scene, node->childNodes[i], bitmap, rowstride);
+	}
+	
+	// draw instances in this node
+	for ( InstanceHeader* instance = node->instances; instance; instance = instance->next )
+	{
+		drawInstance(scene, instance, bitmap, rowstride);
+	}
+	#endif
+}
+
+#if SORT_3D_FACES_BY_Z
+static int compareZFace(const void* _a, const void* _b)
+{
+	SortedFace* a = (SortedFace*)_a;
+	SortedFace* b = (SortedFace*)_b;
+	
+	return a->comparison < b->comparison;
+}
+
+static void Scene3D_drawSortedFaces(Scene3D* scene, uint8_t* bitmap, int rowstride)
+{
+	if (scene->sortedfacelistc > 1)
+	{
+		SortedFace tmp;
+		#define LESS(a, b) scene->sortedfacelist[a].comparison > scene->sortedfacelist[b].comparison
+		#define SWAP(a, b) tmp = scene->sortedfacelist[a], scene->sortedfacelist[a] = scene->sortedfacelist[b], scene->sortedfacelist[b] = tmp
+		QSORT(scene->sortedfacelistc, LESS, SWAP);
+		#undef LESS
+		#undef SWAP
+		pd->system->logToConsole("Faces sorted: %d\n", scene->sortedfacelistc);
+		#if 0
+		for (int i = 0; i < scene->sortedfacelistc; ++i)
 		{
-		case kInstanceTypeShape: {
-				ShapeInstance* shape = (ShapeInstance*)instance;
-				RenderStyle style = shape->renderStyle;
+			SortedFace* sf = &scene->sortedfacelist[i];
+			pd->system->logToConsole(" t%d.%x:%d z%.1f %x", sf->instance->type, sf->face & ~0x80000000, !!(sf->face & 0x80000000), sf->comparison, rand());
+		}
+		#endif
+	}
+	
+	// By construction, we know that everything in this list does not fall below CLIP_EPSILON in z,
+	// so it is safe to call draw*Face functions directly on each face.
+	for ( int i = 0; i < scene->sortedfacelistc; ++i )
+	{
+		SortedFace* face = &scene->sortedfacelist[i];
+		if (face->instance->type == kInstanceTypeShape)
+		{
+			ShapeInstance* shape = (ShapeInstance*)(void*)face->instance;
+			
+			RenderStyle style = shape->renderStyle;
+			
+			if (face->face & 0x80000000)
+			{
+				// clipped face
+				int fidx = face->face & ~0x80000000;
 				
 				if ( style & kRenderFilled )
-					drawFilledShape(scene, shape, bitmap, rowstride);
+					drawClippedFace(scene, shape, &shape->clip[fidx], bitmap, rowstride);
+			}
+			else
+			{
+				int fidx = face->face;
+				
+				if ( style & kRenderFilled )
+					drawShapeFace(scene, shape, &shape->faces[fidx], bitmap, rowstride, NULL);
 				
 				if ( style & kRenderWireframe )
-					drawWireframe(scene, shape, bitmap, rowstride);
+					drawWireframeFace(scene, shape, &shape->faces[fidx], bitmap, rowstride);
 			}
-			break;
-		case kInstanceTypeImposter: {
-				ImposterInstance* imposter = (ImposterInstance*)instance;
-				drawImposter(scene, imposter, bitmap, rowstride);
-			}
-			break;
+		}
+		else if (face->instance->type == kInstanceTypeImposter)
+		{
+			drawImposter(scene, (ImposterInstance*)face->instance, bitmap, rowstride);
 		}
 	}
 }
+#endif
 
 void
 Scene3D_draw(Scene3D* scene, uint8_t* bitmap, int rowstride)
@@ -1476,7 +1669,11 @@ Scene3D_draw(Scene3D* scene, uint8_t* bitmap, int rowstride)
 #if ENABLE_Z_BUFFER
 	scene->zmin = 1e23;
 #endif
-	
+
+#if SORT_3D_FACES_BY_Z
+	scene->sortedfacelistc = 0;
+#endif
+
 	Scene3D_updateNode(scene, &scene->root, scene->camera, 0, kRenderFilled, 0);
 	
 #if ENABLE_Z_BUFFER
@@ -1484,5 +1681,9 @@ Scene3D_draw(Scene3D* scene, uint8_t* bitmap, int rowstride)
 #endif
 	resetZScale(CLIP_EPSILON);
 	
+#if SORT_3D_FACES_BY_Z
+	Scene3D_drawSortedFaces(scene, bitmap, rowstride);
+#else
 	Scene3D_drawNode(scene, &scene->root, bitmap, rowstride);
+#endif
 }

@@ -68,7 +68,7 @@ typedef struct
 	
 	int isClosed : 1;
 #if ENABLE_ORDERING_TABLE
-	int orderTableSize;
+	size_t orderTableSize;
 #endif
 } Shape3D;
 
@@ -112,7 +112,7 @@ void Shape3D_setScanlining(Shape3D* shape, ScanlineFill scanlineFill);
 #endif
 
 #if ENABLE_ORDERING_TABLE
-void Shape3D_setOrderTableSize(Shape3D* shape, int size);
+void Shape3D_setOrderTableSize(Shape3D* shape, size_t size);
 #endif
 
 #endif /* shape_h */

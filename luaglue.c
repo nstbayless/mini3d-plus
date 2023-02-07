@@ -811,7 +811,7 @@ static int shape_setScanlining(lua_State* L)
 #if ENABLE_ORDERING_TABLE
 static int shape_setOrderTableSize(lua_State* L)
 {
-	Shape3D_setOrderTableSize(getShape(1), pd->lua->getArgInt(2));
+	Shape3D_setOrderTableSize(getShape(1), (size_t)MAX(pd->lua->getArgInt(2), 0));
 	return 0;
 }
 #endif

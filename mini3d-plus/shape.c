@@ -208,7 +208,7 @@ void Shape3D_setPattern(Shape3D* shape, PatternTable* pattern)
 #endif
 
 #if ENABLE_ORDERING_TABLE
-void Shape3D_setOrderTableSize(Shape3D* shape, int size)
+void Shape3D_setOrderTableSize(Shape3D* shape, size_t size)
 {
 	shape->orderTableSize = size;
 }

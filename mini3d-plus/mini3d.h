@@ -5,24 +5,61 @@
 //  Created by Dave Hayden on 10/20/15.
 //  Copyright © 2015 Panic, Inc. All rights reserved.
 //
+//  Extended by NaOH © 2022; please see LICENSE.md.
+//
 
 #ifndef mini3d_h
 #define mini3d_h
 
 #include <pd_api.h>
 
-// Generally, you'd only need one of these, as they're two ways of solving the same problem:
-
-// The Z buffer is slower but more accurate, and can handle intersecting geometry.
-#ifndef ENABLE_Z_BUFFER
-    #define ENABLE_Z_BUFFER 1
+/*
+    * This file configures the engine. To get good performance, you'll likely need to understand
+    * and carefully configure the macro values in this file.
+    * Instead of editing this file directly to configure the engine, for portability you can
+    * include a file called mini3d_config.h and set macro values there.
+*/
+#if __has_include("mini3d_config.h")
+    #include "mini3d_config.h"
 #endif
 
-// The ordering table is faster but can produce glitches if the table is too small or there's
-// intersecting geometry in the scene.
-// This is not as well-supported as the z buffer. Some glitches may occur when using it.
+// The biggest question in 3D is how to prevent distant objects from occluding closer objects.
+// There's broadly speaking two solutions: Sorting and Z-Buffering, and you can choose one or mix and match.
+// (Or you can hope for the best and not use either.)
+//
+// Sorting: Draw distance geometry first and closer geometry afterwards.
+//          This doesn't work very well if any geometry intersects or has cyclic overlaps
+// 
+// Z-Buffer: every pixel stores a depth value, and when rendering a pixel we compare against that value.
+//           This is fairly expensive as it makes the innermost render loop ~50% slower -- but it
+//           solves the problem very well. 
+
+// The Z buffer is slower but more accurate, and can handle intersecting geometry.
+// It can render essentially any geometry correctly.
+#ifndef ENABLE_Z_BUFFER
+    #define ENABLE_Z_BUFFER 0
+#endif
+
+// Ordering Tables are per-shape and only apply to individual shapes.
+// It also requires setting the order table size D on every shape manually.
+// Instead of sorting, we hash faces into D buckets
+// spanning zmin to zmax according to their distance from the camera.
+// A large value of D is required to make this work convincingly.
 #ifndef ENABLE_ORDERING_TABLE
     #define ENABLE_ORDERING_TABLE 0
+#endif
+
+// Draw shapes in a scene back-to-front quicksorted by their z values
+// This is a crude version of the painter's algorithm and should probably not be used
+// If a shape contains multiple faces, this does not solve the problem of ordering those faces.
+#ifndef SORT_3D_INSTANCES_BY_Z
+    #define SORT_3D_INSTANCES_BY_Z 0
+#endif
+
+// Draw faces in a scene back-to-front quicksorted by their z values
+// More expensive than the above.
+#ifndef SORT_
+    #define SORT_3D_FACES_BY_Z 1
 #endif
 
 // ------
@@ -240,6 +277,16 @@ int mini3d_eventHandler(PlaydateAPI* playdate, PDSystemEvent event, uint32_t arg
 
 #if !defined(CLAMP)
 #define CLAMP(a, b, x) (MAX(a, MIN(b, x)))
+#endif
+
+// sanity checks
+
+#if SORT_3D_INSTANCES_BY_Z && SORT_FACES_BY_Z
+    #error "Cannot have both SORT_3D_INSTANCES_BY_Z and SORT_FACES_BY_Z"
+#endif
+
+#if SORT_FACES_BY_Z && ENABLE_ORDERING_TABLE
+    #error "Cannot have both ENABLE_ORDERING_TABLE and SORT_FACES_BY_Z"
 #endif
 
 #endif /* mini3d_h */

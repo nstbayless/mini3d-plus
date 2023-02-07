@@ -95,7 +95,7 @@ struct ShapeInstance
 	RenderStyle renderStyle;
 	int inverted : 1; // transformation flipped it across a plane, so we need to reverse backface check
 #if ENABLE_ORDERING_TABLE
-	int orderTableSize;
+	size_t orderTableSize;
 	FaceInstance** orderTable;
 #endif
 };
@@ -148,6 +148,20 @@ void Scene3DNode_setVisible(Scene3DNode* node, int visible);
 void Scene3DNode_setUsesZBuffer(Scene3DNode* node, int flag);
 #endif
 
+#if SORT_3D_FACES_BY_Z
+// points to a (instance, face).
+typedef struct
+{
+	// floating point comparison is 1 cycle, so it's efficient to store comparison value.
+	float comparison;
+	
+	InstanceHeader* instance;
+	// if high bit is set, then this corresponds to a clipped face
+	// (clipped faces are stored separately from regular faces.)
+	uint32_t face;
+} SortedFace;
+#endif
+
 typedef struct
 {
 	int hasPerspective : 1;
@@ -164,9 +178,17 @@ typedef struct
 	
 	Scene3DNode root;
 	
+#if SORT_3D_INSTANCES_BY_Z
 	// all instances from the render tree are added here and z-sorted
 	InstanceHeader** instancelist;
 	int instancelistsize;
+#endif
+
+#if SORT_3D_FACES_BY_Z
+	SortedFace* sortedfacelist;
+	int sortedfacelistsize;
+	int sortedfacelistc;
+#endif
 
 #if ENABLE_Z_BUFFER
 	float zmin;
