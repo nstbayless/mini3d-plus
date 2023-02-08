@@ -87,19 +87,23 @@ end
 path = {}
 j = json.decodeFile("assets/track.json")
 if j then
-    for _, face in ipairs(j["course"]) do
+    for i, face in ipairs(j["course"]) do
+        if i >= 2 then
+            break
+        end
+        local face = face_vertices(face, 0.2)
+        
         f_idx = terrain:addFace(
-            table.unpack(face_vertices(face, 0.2))
+            table.unpack(face)
         )
         if lib3d.texture then
-            if (f_idx ~= 0) then
             terrain:setFaceTextureMap(
                 f_idx,
                 0, 0,
                 1, 0,
                 1, 1,
                 0, 1
-            ) end
+            )
         end
     end
     for _, face in ipairs(j["banner"]) do
@@ -393,7 +397,7 @@ local npckarts = {}
 
 -- kart logic is very inefficient, so we can't actually afford to run multiple karts
 -- on the device at once. (TODO: OPTIMIZE KARTS!)
-if playdate.simulator then
+if playdate.simulator and false then
     npckarts = {makeKart(), makeKart(), makeKart(), makeKart()}
 end
 
@@ -408,6 +412,7 @@ end
 
 function playdate.update()
     dt = max(0.02, min(0.15, playdate.getElapsedTime()))
+    dt = 0.03
     playdate.resetElapsedTime()
     kart:update()
     for _, npckart in ipairs(npckarts) do
