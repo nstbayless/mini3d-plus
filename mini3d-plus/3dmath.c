@@ -110,7 +110,7 @@ Vector3D Point3D_line_difference(Point3D* a, Point3D* b, Point3D* p)
 	line.dy *= dot;
 	line.dz *= dot;
 	diff.dx -= line.dx;
-	diff.dy -= line.dx;
-	diff.dz -= line.dx;
+	diff.dy -= line.dy;
+	diff.dz -= line.dz;
 	return diff;
 }
