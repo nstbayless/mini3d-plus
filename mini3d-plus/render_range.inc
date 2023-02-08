@@ -65,6 +65,11 @@
     #define SYM_ZTAGPL SYM_ZTAGP
 #endif
 
+#if !defined(RENDER_Z) && !defined(RENDER_A)
+    // FIXME: CONTIGUOUS_MASK optimization doesn't seem to work
+    //#define CONTIGUOUS_MASK
+#endif
+
 #define SYM(x) GLUE(x, SYM_ZTAGPL)
 
 #if defined(__GCC__) || defined(__clang__)
@@ -107,7 +112,7 @@ SYM(drawFragment)(
     , uint32_t color
 #endif
 )
-{
+{ 
     #if TEXTURES_ALWAYS_SQUARE
     #define texh texw
     #endif
@@ -133,8 +138,17 @@ SYM(drawFragment)(
         
 		x = VIEWPORT_LEFT;
 	}
+    
+     #ifdef CONTIGUOUS_MASK
+    // with z buffer disabled and alpha disabled, our mask is contiguous
+    // so we can accelerate this a bit.
+    int startbit = x % 32;
+	uint32_t startmask = (1 << (32 - startbit)) - 1;
+	int endbit = endx % 32;
+	uint32_t endmask = ((1 << endbit) - 1) << (32 - endbit);
+    #endif
 
-	uint32_t mask = 0;
+	uint32_t mask = 0; // this is unused if CONTIGUOUS_MASK.
 	uint32_t* p = row + x/32;
     #ifdef RENDER_T
 	    uint32_t color = 0;
@@ -313,8 +327,16 @@ SYM(drawFragment)(
             color = swap(color);
             #endif
             
+            #ifdef CONTIGUOUS_MASK
+            uint32_t mask = startmask;
+            #endif
+            
 			_drawMaskPattern(p++, swap(mask), color);
-			mask = 0;
+            #ifdef CONTIGUOUS_MASK
+            startmask = 0xffffffff;
+            #else
+            mask = 0;
+            #endif
             
             #ifdef RENDER_T
 			color = 0;
@@ -332,6 +354,9 @@ SYM(drawFragment)(
         #ifdef RENDER_T
         // see above
         color = swap(color);
+        #endif
+        #ifdef CONTIGUOUS_MASK
+        uint32_t mask = endmask & startmask;
         #endif
 		_drawMaskPattern(p, swap(mask), color);
     }
@@ -724,6 +749,9 @@ SYM(fillRange)(
 #endif
 #ifdef RENDER_L
     #undef RENDER_L
+#endif
+#ifdef CONTIGUOUS_MASK
+    #undef CONTIGUOUS_MASK
 #endif
 
 #undef RENDER

@@ -378,7 +378,7 @@ r = 0
 l = 0
 t = 0
 
-playdate.display.setRefreshRate(50)
+playdate.display.setRefreshRate(40)
 
 function playdate.AButtonDown()
     if lib3d.renderer.setInterlaceEnabled then
@@ -407,7 +407,7 @@ for i, kart in ipairs(npckarts) do
 end
 
 function playdate.update()
-    dt = max(0.05, min(0.15, playdate.getElapsedTime()))
+    dt = max(0.02, min(0.15, playdate.getElapsedTime()))
     playdate.resetElapsedTime()
     kart:update()
     for _, npckart in ipairs(npckarts) do
