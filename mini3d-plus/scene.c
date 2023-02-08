@@ -326,6 +326,9 @@ static void interpolatePoint2D(Point2D* out, Point2D* a, Point2D* b, float p)
 #endif
 
 // one point in front of camera, two points behind.
+// as in all following clip straddle functions, the points are given
+// in counterclockwise order starting with the rightmost point that is 
+// in front of the camera.
 static void calculateClipping_straddle12(
 	ClippedFace3D* clip, Point3D* a, Point3D* b1, Point3D* b2
 #if ENABLE_TEXTURES
@@ -440,6 +443,41 @@ static void calculateClipping_straddle22(
 		interpolatePoint2D(&clip->tex.t2, ta1, tb2, pa1b2);
 		clip->tex.t3 = *ta1;
 		clip->tex.t4 = *ta2;
+		clip->tex.texture_enabled = 1;
+	}
+	else
+	{
+		clip->tex.texture_enabled = 0;
+	}
+	#endif
+	
+	applyPerspectiveToPoint(clipScene, &clip->p2);
+	applyPerspectiveToPoint(clipScene, &clip->p3);
+	applyPerspectiveToPoint(clipScene, &clip->p4);
+}
+
+// two points in front of camera, two points behind,
+// but we rotate the points on the resulting quad to ensure
+// consistent triangulation.
+static void calculateClipping_straddle22R(
+	ClippedFace3D* clip, Point3D* a1, Point3D* a2, Point3D* b1, Point3D* b2
+#if ENABLE_TEXTURES
+	, Point2D* ta1, Point2D* ta2, Point2D* tb1, Point2D* tb2
+#endif
+)
+{
+	float pa2b1 = interpolatePointAtZClip(&clip->p3, a2, b1);
+	float pa1b2 = interpolatePointAtZClip(&clip->p4, a1, b2);
+	clip->p2 = *a2;
+	clip->p1 = a1;
+	
+	#if ENABLE_TEXTURES
+	if (POINT_FT_NOT_NULL(ta1))
+	{
+		interpolatePoint2D(&clip->tex.t2, ta2, tb1, pa2b1);
+		interpolatePoint2D(&clip->tex.t3, ta1, tb2, pa1b2);
+		clip->tex.t1 = *ta2;
+		clip->tex.t4 = *ta1;
 		clip->tex.texture_enabled = 1;
 	}
 	else
@@ -575,6 +613,9 @@ static void calculateClipping_straddle31A3(
 	}
 #endif
 
+// enable this to use fewer clipfaces but some texture jumping will occur.
+//#define USE_FEWER_CLIPFACES
+
 static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstance* face)
 {
 	Point3D* p1 = face->p1;
@@ -593,7 +634,12 @@ static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstanc
 		else if (!q4 && !q3 && !q2 && !q1) return;
 		else if (q1 && !q2 && !q3 && !q4)
 		{
+			#if USE_FEWER_CLIPFACES
 			CLIP3(12, 1, 2, 4);
+			#else
+			CLIP3(12, 1, 2, 3);
+			CLIP3(12, 1, 3, 4);
+			#endif
 		}
 		else if (!q1 && q2 && !q3 && !q4)
 		{
@@ -601,7 +647,12 @@ static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstanc
 		}
 		else if (!q1 && !q2 && q3 && !q4)
 		{
+			#if USE_FEWER_CLIPFACES
 			CLIP3(12, 3, 4, 2);
+			#else
+			CLIP3(12, 3, 4, 1);
+			CLIP3(12, 3, 1, 2);
+			#endif
 		}
 		else if (!q1 && !q2 && !q3 && q4)
 		{
@@ -609,32 +660,44 @@ static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstanc
 		}
 		else if (q1 && q2 && !q3 && !q4)
 		{
+			#if USE_FEWER_CLIPFACES
 			CLIP4(22, 1, 2, 3, 4);
+			#else
+			CLIP3(21, 1, 2, 3);
+			CLIP3(12, 1, 3, 4);
+			#endif
 		}
 		else if (!q1 && q2 && q3 && !q4)
 		{
-			CLIP4(22, 2, 3, 4, 1);
+			#if USE_FEWER_CLIPFACES
+			CLIP4(22R, 2, 3, 4, 1);
+			#else
+			CLIP3(21, 2, 3, 1);
+			CLIP3(12, 3, 4, 1);
+			#endif
 		}
 		else if (!q1 && !q2 && q3 && q4)
 		{
+			#if USE_FEWER_CLIPFACES
 			CLIP4(22, 3, 4, 1, 2);
+			#else
+			CLIP3(21, 3, 4, 1);
+			CLIP3(12, 3, 1, 2);
+			#endif
 		}
 		else if (q1 && !q2 && !q3 && q4)
 		{
-			CLIP4(22, 4, 1, 2, 3);
+			#if USE_FEWER_CLIPFACES
+			CLIP4(22R, 4, 1, 2, 3);
+			#else
+			CLIP3(21, 4, 1, 3);
+			CLIP3(12, 1, 2, 3);
+			#endif
 		}
 		else if (!q1 && q2 && q3 && q4)
 		{
-			if (p2->z > p4-> z)
-			{
-				CLIP4(31A1, 2, 3, 4, 1);
-				CLIP3(21, 3, 4, 1);
-			}
-			else
-			{
-				CLIP4(31A3, 2, 3, 4, 1);
-				CLIP3(21, 2, 3, 1);
-			}
+			CLIP3(21, 2, 3, 1);
+			CLIP3(21, 3, 4, 1);
 		}
 		else if (q1 && !q2 && q3 && q4)
 		{
@@ -643,16 +706,8 @@ static void calculateClipping_straddleDispatch(ShapeInstance* shape, FaceInstanc
 		}
 		else if (q1 && q2 && !q3 && q4)
 		{
-			if (p4->z > p2-> z)
-			{
-				CLIP4(31A1, 4, 1, 2, 3);
-				CLIP3(21, 1, 2, 3);
-			}
-			else
-			{
-				CLIP4(31A3, 4, 1, 2, 3);
-				CLIP3(21, 4, 1, 3);
-			}
+			CLIP3(21, 4, 1, 3);
+			CLIP3(21, 1, 2, 3);
 		}
 		else if (q1 && q2 && q3 && !q4)
 		{
@@ -1278,70 +1333,6 @@ drawShapeFace(Scene3D* scene, ShapeInstance* shape, FaceInstance* face, uint8_t*
 	}
 }
 
-#if FACE_CLIPPING
-static inline void drawClippedFace(Scene3D* scene, ShapeInstance* shape, ClippedFace3D* clip, uint8_t* bitmap, int rowstride)
-{
-	// create a fictitious face instance for each clipped face, and render that.
-	FaceInstance f;
-	memcpy(&f, clip->src, sizeof(FaceInstance));
-	f.p1 = &clip->p2;
-	f.p2 = &clip->p3;
-	f.p3 = &clip->p4;
-	f.p4 = clip->p1;
-	
-	drawShapeFace(scene, shape, &f, bitmap, rowstride,
-	#if ENABLE_TEXTURES
-		&clip->tex
-	#else
-		NULL
-	#endif
-	);
-}
-#endif
-
-static inline void
-drawFilledShape(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride)
-{
-#if ENABLE_ORDERING_TABLE
-	if ( shape->orderTableSize > 0 )
-	{
-		for ( size_t i = shape->orderTableSize; i --> 0; )
-		{
-			FaceInstance* face = shape->orderTable[i];
-			
-			while ( face != NULL )
-			{
-				if (!face_clips_epsilon(face))
-				{
-					drawShapeFace(scene, shape, face, bitmap, rowstride, NULL);
-				}
-				face = face->next;
-			}
-		}
-	}
-	else
-#endif
-	for ( int f = 0; f < shape->nFaces; ++f )
-	{
-		if (!face_clips_epsilon(&shape->faces[f]))
-		{
-			drawShapeFace(scene, shape, &shape->faces[f], bitmap, rowstride, NULL);
-		}
-	}
-		
-	// XXX (ORDERING_TABLE only)
-	// NOTE (ORDERING_TABLE): we are incorrectly assuming that culled faces are ALWAYS closest to the camera.
-	
-	#if FACE_CLIPPING
-	for ( int i = 0; i < shape->nClip; ++i)
-	{
-		ClippedFace3D* clip = &shape->clip[i];
-		
-		drawClippedFace(scene, shape, clip, bitmap, rowstride);
-	}
-	#endif
-}
-
 // assumption: callee has already ensured that no vertices of this face are behind the camera.
 static FORCEINLINE inline void
 drawWireframeFace(Scene3D* scene, ShapeInstance* shape, FaceInstance* face, uint8_t* bitmap, int rowstride)
@@ -1418,6 +1409,83 @@ drawWireframeFace(Scene3D* scene, ShapeInstance* shape, FaceInstance* face, uint
 #endif
 }
 
+#if FACE_CLIPPING
+static inline void drawClippedFace(Scene3D* scene, ShapeInstance* shape, ClippedFace3D* clip, uint8_t* bitmap, int rowstride)
+{
+	// create a fictitious face instance for each clipped face, and render that.
+	FaceInstance f;
+	memcpy(&f, clip->src, sizeof(FaceInstance));
+	f.p1 = &clip->p2;
+	f.p2 = &clip->p3;
+	f.p3 = &clip->p4;
+	f.p4 = clip->p1;
+	
+	drawShapeFace(scene, shape, &f, bitmap, rowstride,
+	#if ENABLE_TEXTURES
+		&clip->tex
+	#else
+		NULL
+	#endif
+	);
+}
+
+static inline void drawClippedWireframeFace(Scene3D* scene, ShapeInstance* shape, ClippedFace3D* clip, uint8_t* bitmap, int rowstride)
+{
+	// create a fictitious face instance for each clipped face, and render that.
+	FaceInstance f;
+	memcpy(&f, clip->src, sizeof(FaceInstance));
+	f.p1 = &clip->p2;
+	f.p2 = &clip->p3;
+	f.p3 = &clip->p4;
+	f.p4 = clip->p1;
+	
+	drawWireframeFace(scene, shape, &f, bitmap, rowstride);
+}
+#endif
+
+static inline void
+drawFilledShape(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride)
+{
+#if ENABLE_ORDERING_TABLE
+	if ( shape->orderTableSize > 0 )
+	{
+		for ( size_t i = shape->orderTableSize; i --> 0; )
+		{
+			FaceInstance* face = shape->orderTable[i];
+			
+			while ( face != NULL )
+			{
+				if (!face_clips_epsilon(face))
+				{
+					drawShapeFace(scene, shape, face, bitmap, rowstride, NULL);
+				}
+				face = face->next;
+			}
+		}
+	}
+	else
+#endif
+	for ( int f = 0; f < shape->nFaces; ++f )
+	{
+		if (!face_clips_epsilon(&shape->faces[f]))
+		{
+			drawShapeFace(scene, shape, &shape->faces[f], bitmap, rowstride, NULL);
+		}
+	}
+		
+	// XXX (ORDERING_TABLE only)
+	// NOTE (ORDERING_TABLE): we are incorrectly assuming that culled faces are ALWAYS closest to the camera.
+	
+	#if FACE_CLIPPING
+	for ( int i = 0; i < shape->nClip; ++i)
+	{
+		ClippedFace3D* clip = &shape->clip[i];
+		
+		drawClippedFace(scene, shape, clip, bitmap, rowstride);
+	}
+	#endif
+}
+
 static inline void
 drawWireframe(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstride)
 {
@@ -1432,6 +1500,15 @@ drawWireframe(Scene3D* scene, ShapeInstance* shape, uint8_t* bitmap, int rowstri
 		
 		drawWireframeFace(scene, shape, face, bitmap, rowstride);
 	}
+	
+	#if FACE_CLIPPING
+	for ( int i = 0; i < shape->nClip; ++i)
+	{
+		ClippedFace3D* clip = &shape->clip[i];
+		
+		drawClippedWireframeFace(scene, shape, clip, bitmap, rowstride);
+	}
+	#endif
 }
 
 static void
@@ -1644,6 +1721,9 @@ static void Scene3D_drawSortedFaces(Scene3D* scene, uint8_t* bitmap, int rowstri
 				
 				if ( style & kRenderFilled )
 					drawClippedFace(scene, shape, &shape->clip[fidx], bitmap, rowstride);
+					
+				if ( style & kRenderWireframe )
+					drawClippedWireframeFace(scene, shape, &shape->clip[fidx], bitmap, rowstride);
 			}
 			else
 			{
